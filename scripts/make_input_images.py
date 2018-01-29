@@ -76,6 +76,9 @@ def main(Args):
     fname = os.path.join(parentdir, 'data',
                          'gal_pair_catalog.fits')
     catalog.write(fname, format='fits', overwrite=True)
+    fname = os.path.join(parentdir, 'data',
+                         'central_gal_catalog.fits')
+    catalog[:Args.num].write(fname, format='fits', overwrite=True)
 
 
 if __name__ == "__main__":
