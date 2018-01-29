@@ -32,19 +32,19 @@ def get_second_centers(Args, cat):
     """Randomly select centers between 0.4 to  1 pixels"""
     x0 = np.random.uniform(0.4, 1, size=Args.num)
     y0 = np.random.uniform(0.4, 1, size=Args.num)
-    mult_x = np.array([[1] * Args.num / 2 + [-1] * Args.num / 2])
-    mult_y = np.array([[1] * Args.num / 2 + [-1] * Args.num / 2])
+    mult_x = np.array([[1] * (Args.num / 2) + [-1] * (Args.num / 2)])[0]
+    mult_y = np.array([[1] * (Args.num / 2) + [-1] * (Args.num / 2)])[0]
     np.random.shuffle(mult_x)
     np.random.shuffle(mult_y)
-    cat[Args.num:]['dx'] += x0 * mult_x
-    cat[Args.num:]['dy'] += y0 * mult_y
+    c = 0.2 / 3600.
+    cat[Args.num:]['ra'] += x0 * mult_x * c
+    cat[Args.num:]['dec'] += y0 * mult_y * c
 
 
 def get_center_of_field(Args):
     """Returns cenetr pixel value"""
-    ncols = Args.num_colums
-    nrows = Args.num / ncols + 1
-    x_cent = (ncols * Args.stamp_size - 1) / 2.
+    nrows = Args.num / Args.num_columns + 1
+    x_cent = (Args.num_columns * Args.stamp_size - 1) / 2.
     y_cent = (nrows * Args.stamp_size - 1) / 2.
     return x_cent, y_cent
 
@@ -55,13 +55,13 @@ def get_central_centers(Args, cat):
     their neighboring central galaxy.
     """
     num = Args.num
-    ncols = Args.num_colums
+    ncols = Args.num_columns
     nrows = Args.num / ncols + 1
     c = 0.2 / 3600.  # conversion from pixels to arcseconds
     x_cent, y_cent = get_center_of_field(Args)
-    xs = [range(ncols)] * nrows
+    xs = range(ncols) * nrows
     xs = np.array(xs)[range(num)]
-    ys = np.array(range(num), dtype=int)[range(num)] / Args.ncols
+    ys = np.array(range(num), dtype=int)[range(num)] / ncols
     cat['dec'] = (np.append(ys, ys) + Args.stamp_size / 2. - y_cent) * c
     cat['ra'] = (np.append(xs, xs) + Args.stamp_size / 2. - x_cent) * c
 
@@ -87,7 +87,7 @@ if __name__ == "__main__":
                         help="Seed to randomly pick galaxies [Default:0]")
     parser.add_argument('--num_ring', default=2, type=int,
                         help="# pairs the image is rotated [Default:2]")
-    parser.add_argument('--num_colums', default=2, type=int,
+    parser.add_argument('--num_columns', default=8, type=int,
                         help="Number of columns in total field [Default:8]")
     parser.add_argument('--stamp_size', default=240, type=int,
                         help="Size of each stamp in pixels [Default:240]")
