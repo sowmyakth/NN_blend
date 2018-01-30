@@ -44,7 +44,7 @@ def get_second_centers(Args, cat):
 def get_center_of_field(Args):
     """Returns cenetr pixel value"""
     nrows = int(Args.num / Args.num_columns) + 1
-    x_cent = (Args.num_columns * Args.stamp_size - 1) / 2.
+    x_cent = Args.num_columns * Args.stamp_size / 2.
     y_cent = (nrows * Args.stamp_size - 1) / 2.
     return x_cent, y_cent
 
@@ -60,8 +60,10 @@ def get_central_centers(Args, cat):
     c = 0.2 / 3600.  # conversion from pixels to arcseconds
     x_cent, y_cent = get_center_of_field(Args)
     xs = list(range(ncols)) * nrows
-    xs = np.array(xs)[list(range(num))]
+    xs = (np.array(xs)[list(range(num))]) * Args.stamp_size
     ys = np.array(list(range(num)), dtype=int)[list(range(num))] / ncols
+    ys.astype(int)
+    ys *= Args.stamp_size
     cat['dec'] = (np.append(ys, ys) + Args.stamp_size / 2. - y_cent) * c
     cat['ra'] = (np.append(xs, xs) + Args.stamp_size / 2. - x_cent) * c
 
