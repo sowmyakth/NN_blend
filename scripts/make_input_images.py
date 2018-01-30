@@ -52,10 +52,10 @@ def second_args(parser):
                         help='Simulated image height in pixels.')
 
 
-def run_wl_deb(Args, cat_string, wldeb_path):
+def run_wl_deb(Args, cat_string):
     """Runs wldeblender package on the input cataloag"""
     path = wldeb_path
-    path += "/WeakLensingDeblending/simulate.py"
+    path += "/simulate.py"
     keys = ['exposure_time', 'cosmic_shear_g2', 'image_width', 'filter_band',
             'cosmic_shear_g1', 'image_height']
     kys2 = ['exposure-time', 'cosmic-shear-g2', 'image-width', 'filter-band',
