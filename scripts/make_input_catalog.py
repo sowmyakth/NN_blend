@@ -32,8 +32,8 @@ def get_second_centers(Args, cat):
     """Randomly select centers between 0.4 to  1 pixels"""
     x0 = np.random.uniform(0.4, 1, size=Args.num)
     y0 = np.random.uniform(0.4, 1, size=Args.num)
-    mult_x = np.array([[1] * (Args.num / 2) + [-1] * (Args.num / 2)])[0]
-    mult_y = np.array([[1] * (Args.num / 2) + [-1] * (Args.num / 2)])[0]
+    mult_x = np.array([[1] * int(Args.num / 2) + [-1] * int(Args.num / 2)])[0]
+    mult_y = np.array([[1] * int(Args.num / 2) + [-1] * int(Args.num / 2)])[0]
     np.random.shuffle(mult_x)
     np.random.shuffle(mult_y)
     c = 0.2 / 3600.
@@ -43,7 +43,7 @@ def get_second_centers(Args, cat):
 
 def get_center_of_field(Args):
     """Returns cenetr pixel value"""
-    nrows = Args.num / Args.num_columns + 1
+    nrows = int(Args.num / Args.num_columns) + 1
     x_cent = (Args.num_columns * Args.stamp_size - 1) / 2.
     y_cent = (nrows * Args.stamp_size - 1) / 2.
     return x_cent, y_cent
@@ -56,17 +56,18 @@ def get_central_centers(Args, cat):
     """
     num = Args.num
     ncols = Args.num_columns
-    nrows = num / ncols + 1
+    nrows = int(num / ncols) + 1
     c = 0.2 / 3600.  # conversion from pixels to arcseconds
     x_cent, y_cent = get_center_of_field(Args)
-    xs = range(ncols) * nrows
-    xs = np.array(xs)[range(num)]
-    ys = np.array(range(num), dtype=int)[range(num)] / ncols
+    xs = list(range(ncols)) * nrows
+    xs = np.array(xs)[list(range(num))]
+    ys = np.array(list(range(num)), dtype=int)[list(range(num))] / ncols
     cat['dec'] = (np.append(ys, ys) + Args.stamp_size / 2. - y_cent) * c
     cat['ra'] = (np.append(xs, xs) + Args.stamp_size / 2. - x_cent) * c
 
 
 def main(Args):
+    print ("Creating input catalog")
     catdir = '/global/homes/s/sowmyak/blending'
     np.random.seed(Args.seed)
     catalog = get_galaxies(Args, catdir)
