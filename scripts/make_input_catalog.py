@@ -91,8 +91,6 @@ def add_args(parser):
                         help="# of distinct galaxy pairs [Default:16]")
     parser.add_argument('--seed', default=0, type=int,
                         help="Seed to randomly pick galaxies [Default:0]")
-    parser.add_argument('--num_ring', default=2, type=int,
-                        help="# pairs the image is rotated [Default:2]")
     parser.add_argument('--num_columns', default=8, type=int,
                         help="Number of columns in total field [Default:8]")
     parser.add_argument('--stamp_size', default=240, type=int,
