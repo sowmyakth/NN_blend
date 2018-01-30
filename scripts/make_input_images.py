@@ -71,9 +71,11 @@ def run_wl_deb(Args, cat_string):
     for i, key in enumerate(keys):
         com += " --" + str(kys2[i]) + " "
         com += str(vars(Args)[key])
-    print (com)
     p = subprocess.call(com, shell=True, stdout=subprocess.PIPE)
-    print (p)
+    if p == 0:
+        print ("Success!")
+    else:
+        print ("FAILURE!!!")
 
 
 def add_noise(Args, cat_string):
