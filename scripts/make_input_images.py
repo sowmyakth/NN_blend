@@ -5,6 +5,7 @@ import os
 import subprocess
 import argparse
 import make_input_catalog
+import numpy as np
 
 
 def main():
@@ -20,7 +21,7 @@ def main():
     # import ipdb;ipdb.set_trace()
     num = args.num
     ncols = args.num_columns
-    nrows = int(num / ncols) + 1
+    nrows = int(np.ceil(num / ncols))
     args.image_height = nrows * args.stamp_size
     args.image_width = ncols * args.stamp_size
     run_wl_deb(args, 'gal_pair')
@@ -58,10 +59,7 @@ def run_wl_deb(Args, cat_string):
     com = "python " + path + " --no-stamps"
     com += " --catalog-name " + in_cat
     com += " --output-name " + out_cat
-    arguments = [com, ]
     for i, key in enumerate(keys):
-        #arguments.append("--" + str(key))
-        #arguments.append(str(vars(Args)[key]))
         com += " --" + str(kys2[i]) + " "
         com += str(vars(Args)[key])
     print (com)
