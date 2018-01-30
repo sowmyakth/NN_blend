@@ -29,14 +29,15 @@ def get_galaxies(Args, catdir):
 
 
 def get_second_centers(Args, cat):
-    """Randomly select centers between 0.4 to  1 pixels"""
+    """Randomly select centers between 0.4 to  1 arcseconds"""
     x0 = np.random.uniform(0.4, 1, size=Args.num)
     y0 = np.random.uniform(0.4, 1, size=Args.num)
+    print(np.hypot(x0, y0))
     mult_x = np.array([[1] * int(Args.num / 2) + [-1] * int(Args.num / 2)])[0]
     mult_y = np.array([[1] * int(Args.num / 2) + [-1] * int(Args.num / 2)])[0]
     np.random.shuffle(mult_x)
     np.random.shuffle(mult_y)
-    c = 0.2 / 3600.
+    c = 1 / 3600.
     cat[Args.num:]['ra'] += x0 * mult_x * c
     cat[Args.num:]['dec'] += y0 * mult_y * c
 
@@ -44,7 +45,7 @@ def get_second_centers(Args, cat):
 def get_center_of_field(Args):
     """Returns cenetr pixel value"""
     nrows = int(Args.num / Args.num_columns) + 1
-    x_cent = Args.num_columns * Args.stamp_size / 2.
+    x_cent = (Args.num_columns * Args.stamp_size - 1) / 2.
     y_cent = (nrows * Args.stamp_size - 1) / 2.
     return x_cent, y_cent
 
@@ -62,7 +63,7 @@ def get_central_centers(Args, cat):
     xs = list(range(ncols)) * nrows
     xs = (np.array(xs)[list(range(num))]) * Args.stamp_size
     ys = np.array(list(range(num)), dtype=int)[list(range(num))] / ncols
-    ys.astype(int)
+    ys = ys.astype(int)
     ys *= Args.stamp_size
     cat['dec'] = (np.append(ys, ys) + Args.stamp_size / 2. - y_cent) * c
     cat['ra'] = (np.append(xs, xs) + Args.stamp_size / 2. - x_cent) * c
@@ -87,8 +88,8 @@ def main(Args):
 def add_args(parser):
     # from argparse import ArgumentParser
     # parser = ArgumentParser()
-    parser.add_argument('--num', default=10, type=int,
-                        help="# of distinct galaxy pairs [Default:10]")
+    parser.add_argument('--num', default=16, type=int,
+                        help="# of distinct galaxy pairs [Default:16]")
     parser.add_argument('--seed', default=0, type=int,
                         help="Seed to randomly pick galaxies [Default:0]")
     parser.add_argument('--num_ring', default=2, type=int,
