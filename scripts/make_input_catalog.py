@@ -29,22 +29,21 @@ def get_galaxies(Args, catdir):
 
 
 def get_second_centers(Args, cat):
-    """Randomly select centers between 0.4 to  1 arcseconds"""
-    x0 = np.random.uniform(0.4, 1, size=Args.num)
-    y0 = np.random.uniform(0.4, 1, size=Args.num)
-    print(np.hypot(x0, y0))
+    """Randomly select centers between 0.2 to  0. arcseconds"""
+    x0 = np.random.uniform(0.4, 0.9, size=Args.num)
+    y0 = np.random.uniform(0.4, 0.9, size=Args.num)
     mult_x = np.array([[1] * int(Args.num / 2) + [-1] * int(Args.num / 2)])[0]
     mult_y = np.array([[1] * int(Args.num / 2) + [-1] * int(Args.num / 2)])[0]
     np.random.shuffle(mult_x)
     np.random.shuffle(mult_y)
     c = 1 / 3600.
-    cat[Args.num:]['ra'] += x0 * mult_x * c
-    cat[Args.num:]['dec'] += y0 * mult_y * c
+    cat['ra'][Args.num:] += x0 * mult_x * c
+    cat['dec'][Args.num:] += y0 * mult_y * c
 
 
 def get_center_of_field(Args):
     """Returns cenetr pixel value"""
-    nrows = int(Args.num / Args.num_columns) + 1
+    nrows = int(np.ceil(Args.num / Args.num_columns))
     x_cent = (Args.num_columns * Args.stamp_size - 1) / 2.
     y_cent = (nrows * Args.stamp_size - 1) / 2.
     return x_cent, y_cent
@@ -57,7 +56,7 @@ def get_central_centers(Args, cat):
     """
     num = Args.num
     ncols = Args.num_columns
-    nrows = int(num / ncols) + 1
+    nrows = int(np.ceil(num / ncols))
     c = 0.2 / 3600.  # conversion from pixels to arcseconds
     x_cent, y_cent = get_center_of_field(Args)
     xs = list(range(ncols)) * nrows
