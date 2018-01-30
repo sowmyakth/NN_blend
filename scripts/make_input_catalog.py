@@ -81,9 +81,9 @@ def main(Args):
     catalog[:Args.num].write(fname, format='fits', overwrite=True)
 
 
-if __name__ == "__main__":
-    from argparse import ArgumentParser
-    parser = ArgumentParser()
+def add_args(parser):
+    # from argparse import ArgumentParser
+    # parser = ArgumentParser()
     parser.add_argument('--num', default=10, type=int,
                         help="# of distinct galaxy pairs [Default:10]")
     parser.add_argument('--seed', default=0, type=int,
@@ -94,5 +94,8 @@ if __name__ == "__main__":
                         help="Number of columns in total field [Default:8]")
     parser.add_argument('--stamp_size', default=240, type=int,
                         help="Size of each stamp in pixels [Default:240]")
-    args = parser.parse_args()
-    main(args)
+#    main(args)
+
+
+#if __name__ == "__main__":
+#    add_args()
