@@ -6,6 +6,11 @@ import subprocess
 import argparse
 import make_input_catalog
 import numpy as np
+import galsim
+import sys
+wldeb_path = "/global/homes/s/sowmyak/blending_tutorial/Blending_tutorial/WeakLensingDeblending"
+sys.path.insert(0, wldeb_path)
+import descwl
 
 
 def main():
@@ -26,9 +31,12 @@ def main():
     args.image_width = ncols * args.stamp_size
     run_wl_deb(args, 'gal_pair')
     run_wl_deb(args, 'central_gal')
+    add_noise(args, 'gal_pair')
+    add_noise(args, 'central_gal')
 
 
 def second_args(parser):
+    """Arguments to be passed to the WLdeblender"""
     parser.add_argument('--cosmic-shear-g1', default=0.01, type=float,
                         help="g1 component of shear [Default:0.01]")
     parser.add_argument('--cosmic-shear-g2', default=0.01, type=float,
@@ -44,8 +52,9 @@ def second_args(parser):
                         help='Simulated image height in pixels.')
 
 
-def run_wl_deb(Args, cat_string):
-    path = "/global/homes/s/sowmyak/blending_tutorial/Blending_tutorial"
+def run_wl_deb(Args, cat_string, wldeb_path):
+    """Runs wldeblender package on the input cataloag"""
+    path = wldeb_path
     path += "/WeakLensingDeblending/simulate.py"
     keys = ['exposure_time', 'cosmic_shear_g2', 'image_width', 'filter_band',
             'cosmic_shear_g1', 'image_height']
@@ -65,6 +74,19 @@ def run_wl_deb(Args, cat_string):
     print (com)
     p = subprocess.call(com, shell=True, stdout=subprocess.PIPE)
     print (p)
+
+
+def add_noise(Args, cat_string):
+    """Adds noise to the wldeb output image"""
+    parentdir = os.path.abspath("..")
+    in_cat = os.path.join(parentdir, 'data',
+                          cat_string + '_wldeb.fits')
+    out_cat = os.path.join(parentdir, 'data',
+                           cat_string + '_wldeb_noise.fits')
+    # Read the image using descwl's package
+    wldeb = descwl.output.Reader(in_cat).results
+    wldeb.add_noise(noise_seed=Args.seed)
+    galsim.fits.write(wldeb.survey.image, out_cat)
 
 
 if __name__ == "__main__":
