@@ -30,8 +30,8 @@ def get_galaxies(Args, catdir):
 
 def get_second_centers(Args, cat):
     """Randomly select centers between 0.2 to  0. arcseconds"""
-    x0 = np.random.uniform(0.4, 0.9, size=Args.num)
-    y0 = np.random.uniform(0.4, 0.9, size=Args.num)
+    x0 = np.random.uniform(0.6, 1.2, size=Args.num)
+    y0 = np.random.uniform(0.6, 1.2, size=Args.num)
     mult_x = np.array([[1] * int(Args.num / 2) + [-1] * int(Args.num / 2)])[0]
     mult_y = np.array([[1] * int(Args.num / 2) + [-1] * int(Args.num / 2)])[0]
     np.random.shuffle(mult_x)
