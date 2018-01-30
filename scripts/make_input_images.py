@@ -15,6 +15,8 @@ import descwl
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--make_input_catalog', default="True",
+                        help="Run make_input_catalog.main() [Default:True]")
     catalog_group = parser.add_argument_group('Catlog options',
                                               'Input catalog options')
     make_input_catalog.add_args(catalog_group)
@@ -22,7 +24,8 @@ def main():
                                             'Input options to WLdeb package')
     second_args(wldeb_group)
     args = parser.parse_args()
-    make_input_catalog.main(args)
+    if args.make_input_catalog is "True":
+        make_input_catalog.main(args)
     # import ipdb;ipdb.set_trace()
     num = args.num
     ncols = args.num_columns
@@ -61,10 +64,11 @@ def run_wl_deb(Args, cat_string):
     kys2 = ['exposure-time', 'cosmic-shear-g2', 'image-width', 'filter-band',
             'cosmic-shear-g1', 'image-height']
     parentdir = os.path.abspath("..")
+    name = cat_string + "_" + Args.filter_band
     in_cat = os.path.join(parentdir, 'data',
                           cat_string + '_catalog.fits')
     out_cat = os.path.join(parentdir, 'data',
-                           cat_string + '_wldeb.fits')
+                           name + '_wldeb.fits')
     com = "python " + path + " --no-stamps"
     com += " --catalog-name " + in_cat
     com += " --output-name " + out_cat
@@ -81,10 +85,11 @@ def run_wl_deb(Args, cat_string):
 def add_noise(Args, cat_string):
     """Adds noise to the wldeb output image"""
     parentdir = os.path.abspath("..")
+    name = cat_string + "_" + Args.filter_band
     in_cat = os.path.join(parentdir, 'data',
-                          cat_string + '_wldeb.fits')
+                          name + '_wldeb.fits')
     out_cat = os.path.join(parentdir, 'data',
-                           cat_string + '_wldeb_noise.fits')
+                           name + '_wldeb_noise.fits')
     # Read the image using descwl's package
     wldeb = descwl.output.Reader(in_cat).results
     wldeb.add_noise(noise_seed=Args.seed)
