@@ -25,6 +25,8 @@ def load_images(filename, bands):
 
 
 def get_test_validation_sets(X, Y, subtract_mean, split=0.1):
+    """Separates the dataset into training and validation set with splitting ratio split.ratio
+    Also subtracts the mean of the training image if input"""
     np.random.seed(0)
     num = X.shape[0]
     np.random.seed(0)
@@ -50,6 +52,4 @@ def get_data(subtract_mean=True):
     filename = path + 'central_gal_band_wldeb.fits'
     Y = load_images(filename, ['i'])
     X_train, Y_train, X_val, Y_val = get_test_validation_sets(X, Y, subtract_mean)
-    return {'X_train': X_train, 'y_train': Y_train,
-            'X_val': X_val, 'y_val': Y_val,
-            }
+    return X_train, Y_train, X_val, Y_val
