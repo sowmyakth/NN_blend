@@ -52,7 +52,7 @@ class CNN_deblender(object):
         variables = [mean_loss, pred_loss, ]
         if training_now:
             variables[-1] = training
-        #  counter 
+        # counter
         iter_cnt = 0
         for e in range(epochs):
             # keep track of losses and accuracy
@@ -76,8 +76,8 @@ class CNN_deblender(object):
                 losses.append(loss * actual_batch_size)
                 # print every now and then
                 if training_now and (iter_cnt % print_every) == 0:
-                    print("Iteration {0}: with minibatch training loss = {1}"\
-                          .format(iter_cnt,loss))
+                    print("Iteration {0}: with minibatch training loss = {1}" \
+                          .format(iter_cnt, loss))
                 iter_cnt += 1
             total_loss = np.sum(losses) / Xd.shape[0]
             print("Epoch {1}, Overall loss = {0}"\
