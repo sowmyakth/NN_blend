@@ -17,8 +17,7 @@ class CNN_deblender(object):
 
     def get_mean_loss(self, y, y_out):
         total_loss = tf.nn.l2_loss(self.y - self.y_out)
-        mean_loss = tf.reduce_mean(total_loss)
-        return mean_loss
+        self.mean_loss = tf.reduce_mean(total_loss)
 
     def build_simple_model(self):
         """makes a simple 2 layer CNN
@@ -39,8 +38,8 @@ class CNN_deblender(object):
         y_out = tf.matmul(W1, h1_flat)
         y_out = tf.transpose(y_out)
         self.y_out = tf.reshape(y_out, [-1, 32, 32]) + b1
-        mean_loss = self.get_mean_loss(self.y, self.y_out)
-        self.train_step = self.optimizer.minimize(mean_loss)
+        self.get_mean_loss()
+        self.train_step = self.optimizer.minimize(self.mean_loss)
 
     def train(self, X_train, Y_train):
         variables = [self.train_step]
@@ -56,6 +55,7 @@ class CNN_deblender(object):
     def run_model(self, model, X_test, X_train, Y_train,
                   epochs=1, batch_size=64, print_every=100,
                   training=None, plot_losses=False):
+        self.tot_loss = []
         # shuffle indicies
         train_indicies = np.arange(Xd.shape[0])
         np.random.shuffle(train_indicies)
@@ -72,22 +72,18 @@ class CNN_deblender(object):
                 idx = train_indicies[start_idx:start_idx + batch_size]
                 # create a feed dictionary for this batch
                 if training is True:
-                    self.train(Xd[idx, :, :, :],
-                               yd[idx, :, :])
+                    self.train(X_train[idx, :, :, :],
+                               Y_train[idx, :, :])
+                else:
+                    self.test(X_test)
+                    self.get_mean_loss()
                 # get batch size
-                actual_batch_size = yd[idx].shape[0]
-                # have tensorflow compute loss and correct predictions
-                # and (if given) perform a training step
-                loss, im = session.run(variables, feed_dict=feed_dict)
-                pred = y_out.eval(session=session, feed_dict=feed_dict)
+                actual_batch_size = Y_test[idx].shape[0]  # fix this
                 # aggregate performance stats
-                losses.append(loss * actual_batch_size)
+                losses.append(self.mean_loss * actual_batch_size)
                 # print every now and then
                 if training_now and (iter_cnt % print_every) == 0:
                     print("Iteration {0}: with minibatch training loss = {1}" \
                           .format(iter_cnt, loss))
                 iter_cnt += 1
-            total_loss = np.sum(losses) / Xd.shape[0]
-            print("Epoch {1}, Overall loss = {0}"\
-                  .format(total_loss, e + 1))
-    return total_loss
+            self.tot_loss.append(np.sum(losses) / X_test.shape[0])  # fix
