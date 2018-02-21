@@ -1,7 +1,5 @@
 """Script to create CNN for retrieving isolated galaxy image from a two
 galaxy blend"""
-import os
-import sys
 # import skimage.io as io
 import numpy as np
 import math
@@ -9,6 +7,7 @@ import tensorflow as tf
 
 
 class CNN_deblender(object):
+    """Class to initialize and run CNN"""
     def __init__(self, ):
         self.optimizer = tf.train.AdamOptimizer(5e-4)
         self.sess = tf.Session()
@@ -31,7 +30,7 @@ class CNN_deblender(object):
         W1 = tf.get_variable("W1", shape=[32, 32, 1, 49])
         b1 = tf.get_variable("b1", shape=[32, 32])
         # define our graph (e.g. two_layer_convnet)
-        a1 = tf.nn.conv2d(X, Wconv1, strides=[1, 2, 2, 1],
+        a1 = tf.nn.conv2d(self.X, Wconv1, strides=[1, 2, 2, 1],
                           padding='VALID') + bconv1
         h1 = tf.nn.relu(a1)
         h1_flat = tf.reshape(h1, [32, 32, 49, -1])
@@ -43,47 +42,43 @@ class CNN_deblender(object):
 
     def train(self, X_train, Y_train):
         variables = [self.train_step]
-        feed_dict = {self.X: X_train[idx, :, :, :],
-                     self.y: Y_train[idx, :, :]}
+        feed_dict = {self.X: X_train,
+                     self.y: Y_train}
         self.sess.run(variables, feed_dict=feed_dict)
 
     def test(self, X_test):
         """Evaluates net for input X"""
         self.y_out.eval(session=self.sess,
-                        feed_dict={X: X_test})
+                        feed_dict={self.X: X_test})
 
-    def run_model(self, model, X_test, X_train, Y_train,
+    def run_model(self, X_test, X_train, Y_train,
                   epochs=1, batch_size=64, print_every=100,
                   training=None, plot_losses=False):
         self.tot_loss = []
         # shuffle indicies
-        train_indicies = np.arange(Xd.shape[0])
+        train_indicies = np.arange(X_train.shape[0])
         np.random.shuffle(train_indicies)
         # setting up variables we want to compute (and optimizing)
         # if we have a training function, add that to things we compute
         iter_cnt = 0
         for e in range(epochs):
             # keep track of losses and accuracy
-            losses = []
+            train_loss, test_loss = [], []
             # make sure we iterate over the dataset once
-            for i in range(int(math.ceil(Xd.shape[0] / batch_size))):
+            for i in range(int(math.ceil(X_test.shape[0] / batch_size))):  ## fix 
                 # generate indicies for the batch
-                start_idx = (i * batch_size)%Xd.shape[0]
+                start_idx = (i * batch_size)%X_train.shape[0]  #fix
                 idx = train_indicies[start_idx:start_idx + batch_size]
                 # create a feed dictionary for this batch
-                if training is True:
-                    self.train(X_train[idx, :, :, :],
-                               Y_train[idx, :, :])
-                else:
-                    self.test(X_test)
-                    self.get_mean_loss()
-                # get batch size
-                actual_batch_size = Y_test[idx].shape[0]  # fix this
-                # aggregate performance stats
-                losses.append(self.mean_loss * actual_batch_size)
+                self.train(X_train[idx, :, :, :],
+                           Y_train[idx, :, :])
+                loss = self.get_mean_loss()
+                train_loss.append(loss)
                 # print every now and then
-                if training_now and (iter_cnt % print_every) == 0:
+                if (iter_cnt % print_every) == 0:
                     print("Iteration {0}: with minibatch training loss = {1}" \
                           .format(iter_cnt, loss))
                 iter_cnt += 1
-            self.tot_loss.append(np.sum(losses) / X_test.shape[0])  # fix
+            self.test(X_test)
+            test_loss.append(self.get_mean_loss())
+        return train_loss, test_loss
