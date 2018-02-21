@@ -41,6 +41,9 @@ def get_test_validation_sets(X, Y, subtract_mean, split=0.1):
         mean_image = np.mean(X_train, axis=0)
         X_train -= mean_image
         X_val -= mean_image
+        mean_image = np.mean(Y_train, axis=0)
+        Y_train -= mean_image
+        Y_val -= mean_image
     return X_train, Y_train, X_val, Y_val
 
 
