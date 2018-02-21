@@ -8,13 +8,11 @@ import math
 import tensorflow as tf
 
 
-
-
-
 class CNN_deblender(object):
     def __init__(self, ):
         self.optimizer = tf.train.AdamOptimizer(5e-4)
         self.sess = tf.Session()
+        self.build_simple_model()
         self.sess.run(tf.global_variables_initializer())
 
     def get_mean_loss(self, y, y_out):
@@ -41,13 +39,13 @@ class CNN_deblender(object):
         y_out = tf.matmul(W1, h1_flat)
         y_out = tf.transpose(y_out)
         self.y_out = tf.reshape(y_out, [-1, 32, 32]) + b1
+        mean_loss = self.get_mean_loss(self.y, self.y_out)
+        self.train_step = self.optimizer.minimize(mean_loss)
 
     def train(self, X_train, Y_train):
         variables = [self.train_step]
         feed_dict = {self.X: X_train[idx, :, :, :],
                      self.y: Y_train[idx, :, :]}
-        mean_loss = self.get_mean_loss(y, y_out)
-        self.train_step = self.optimizer.minimize(mean_loss)
         self.sess.run(variables, feed_dict=feed_dict)
 
     def test(self, X_test):
@@ -61,16 +59,8 @@ class CNN_deblender(object):
         # shuffle indicies
         train_indicies = np.arange(Xd.shape[0])
         np.random.shuffle(train_indicies)
-        training_now = training is not None
         # setting up variables we want to compute (and optimizing)
         # if we have a training function, add that to things we compute
-        if training is not None:
-            variables = [training, y_out]
-        else:
-
-        if training_now:
-            variables[-1] = training
-        # counter
         iter_cnt = 0
         for e in range(epochs):
             # keep track of losses and accuracy
@@ -81,9 +71,9 @@ class CNN_deblender(object):
                 start_idx = (i * batch_size)%Xd.shape[0]
                 idx = train_indicies[start_idx:start_idx + batch_size]
                 # create a feed dictionary for this batch
-                feed_dict = {X: Xd[idx, :, :, :],
-                             y: yd[idx, :, :],
-                             is_training: training_now}
+                if training is True:
+                    self.train(Xd[idx, :, :, :],
+                               yd[idx, :, :])
                 # get batch size
                 actual_batch_size = yd[idx].shape[0]
                 # have tensorflow compute loss and correct predictions
@@ -101,6 +91,3 @@ class CNN_deblender(object):
             print("Epoch {1}, Overall loss = {0}"\
                   .format(total_loss, e + 1))
     return total_loss
-
-
-def get_predicted_image()
