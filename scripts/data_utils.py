@@ -1,9 +1,5 @@
 """Script creates training and validation data for deblending two-galaxy pairs"""
 from astropy.io import fits
-import os
-import sys
-import tensorflow as tf
-import skimage.io as io
 import numpy as np
 
 
