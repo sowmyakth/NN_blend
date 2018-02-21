@@ -8,21 +8,27 @@ import math
 import tensorflow as tf
 
 
-def get_loss(y, y_out):
-    total_loss = tf.nn.l2_loss(y - y_out)
-    mean_loss = tf.reduce_mean(total_loss)
-    return mean_loss
+
 
 
 class CNN_deblender(object):
     def __init__(self, ):
         self.optimizer = tf.train.AdamOptimizer(5e-4)
+        self.sess = tf.Session()
+        self.sess.run(tf.global_variables_initializer())
 
-    def simple_model(self, X, y):
+    def get_mean_loss(self, y, y_out):
+        total_loss = tf.nn.l2_loss(self.y - self.y_out)
+        mean_loss = tf.reduce_mean(total_loss)
+        return mean_loss
+
+    def build_simple_model(self):
         """makes a simple 2 layer CNN
         layer 1 Conv 5*5*2s2, 256/ReLU
         layer 2 FC 32*32,1, 49
          """
+        self.X = tf.placeholder(tf.float32, [None, 32, 32, 2])
+        self.y = tf.placeholder(tf.float32, [None, 32, 32])
         Wconv1 = tf.get_variable("Wconv1", shape=[5, 5, 2, 256])
         bconv1 = tf.get_variable("bconv1", shape=[256])
         W1 = tf.get_variable("W1", shape=[32, 32, 1, 49])
@@ -34,13 +40,22 @@ class CNN_deblender(object):
         h1_flat = tf.reshape(h1, [32, 32, 49, -1])
         y_out = tf.matmul(W1, h1_flat)
         y_out = tf.transpose(y_out)
-        y_out = tf.reshape(y_out, [-1, 32, 32]) + b1
-        return y_out
+        self.y_out = tf.reshape(y_out, [-1, 32, 32]) + b1
 
-    def train(self, ):
-        train_step = optimizer.minimize(mean_loss)
+    def train(self, X_train, Y_train):
+        variables = [self.train_step]
+        feed_dict = {self.X: X_train[idx, :, :, :],
+                     self.y: Y_train[idx, :, :]}
+        mean_loss = self.get_mean_loss(y, y_out)
+        self.train_step = self.optimizer.minimize(mean_loss)
+        self.sess.run(variables, feed_dict=feed_dict)
 
-    def run_model(self, session, predict, mean_loss, Xd, yd,
+    def test(self, X_test):
+        """Evaluates net for input X"""
+        self.y_out.eval(session=self.sess,
+                        feed_dict={X: X_test})
+
+    def run_model(self, model, X_test, X_train, Y_train,
                   epochs=1, batch_size=64, print_every=100,
                   training=None, plot_losses=False):
         # shuffle indicies
@@ -49,7 +64,10 @@ class CNN_deblender(object):
         training_now = training is not None
         # setting up variables we want to compute (and optimizing)
         # if we have a training function, add that to things we compute
-        variables = [mean_loss, pred_loss, ]
+        if training is not None:
+            variables = [training, y_out]
+        else:
+
         if training_now:
             variables[-1] = training
         # counter
