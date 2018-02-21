@@ -24,8 +24,10 @@ def load_images(filename, bands):
     return image
 
 
-def get_test_validation_sets(X, Y, subtract_mean, split=0.1):
-    """Separates the dataset into training and validation set with splitting ratio split.ratio
+def get_test_validation_sets(X, Y, split=0.1,
+                             subtract_mean=False, normalize_stamps=True):
+    """Separates the dataset into training and validation set with splitting
+    ratio split.ratio
     Also subtracts the mean of the training image if input"""
     np.random.seed(0)
     num = X.shape[0]
@@ -44,6 +46,15 @@ def get_test_validation_sets(X, Y, subtract_mean, split=0.1):
         mean_image = np.mean(Y_train, axis=0)
         Y_train -= mean_image
         Y_val -= mean_image
+    if normalize_stamps:
+        sum_image = X_train.sum(axis=3).sum(axis=1).sum(axis=1)
+        X_train = (X_train.T / sum_image.T).T
+        sum_image = Y_train.sum(axis=2).sum(axis=1)
+        Y_train = (Y_train.T / sum_image.T).T
+        sum_image = X_val.sum(axis=3).sum(axis=1).sum(axis=1)
+        X_val = (X_val.T / sum_image.T).T
+        sum_image = Y_val.sum(axis=2).sum(axis=1)
+        Y_val = (Y_val.T / sum_image.T).T
     return X_train, Y_train, X_val, Y_val
 
 
