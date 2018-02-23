@@ -26,7 +26,7 @@ class CNN_deblender(object):
         self.build_net()
         self.sess.run(tf.global_variables_initializer())
 
-    def get_mean_loss(self, y, y_out):
+    def get_mean_loss(self):
         total_loss = tf.nn.l2_loss(self.y - self.y_out)
         self.mean_loss = tf.reduce_mean(total_loss)
 
@@ -48,7 +48,7 @@ class CNN_deblender(object):
         y_out = tf.transpose(y_out)
         self.y_out = tf.reshape(y_out, [-1, 32, 32]) + b1
 
-    def basic_unit(input_layer, i):
+    def basic_unit(self, input_layer, i):
         with tf.variable_scope("basic_unit" + str(i)):
             part1 = tf.layers.conv2d(input_layer, 32, [3, 3],
                                      padding='VALID',
@@ -72,7 +72,8 @@ class CNN_deblender(object):
                                     scope="conv_0")
         for i in range(num_layers):
             layer_in = self.basic_unit(layer_in, i)
-        deconv_weights = get_deconv_layer()
+        # Check this!!
+        deconv_weights = get_deconv_layer([3, 3, 1, 32])
         y_out = tf.nn.conv2d_transpose(layer_in, deconv_weights,
                                        [None, 32, 32])
         return y_out
@@ -101,8 +102,7 @@ class CNN_deblender(object):
                         feed_dict={self.X: X_test})
 
     def run_model(self, X_test, X_train, Y_train,
-                  epochs=1, batch_size=64, print_every=100,
-                  training=None, plot_losses=False):
+                  epochs=1, batch_size=64, print_every=100):
         # shuffle indicies
         train_indicies = np.arange(X_train.shape[0])
         np.random.shuffle(train_indicies)
@@ -111,6 +111,7 @@ class CNN_deblender(object):
         iter_cnt = 0
         train_loss, test_loss = [], []
         for e in range(epochs):
+            print("running epoch " , e)
             # keep track of losses and accuracy
             # make sure we iterate over the dataset once
             for i in range(int(math.ceil(X_test.shape[0] / batch_size))):  ## fix 
