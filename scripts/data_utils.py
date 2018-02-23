@@ -1,4 +1,6 @@
-"""Script creates training and validation data for deblending two-galaxy pairs"""
+"""Script creates training and validation data for deblending two-galaxy
+pairs"""
+import os
 from astropy.io import fits
 import numpy as np
 
@@ -20,8 +22,7 @@ def load_images(filename, bands):
     return image
 
 
-def get_train_val_sets(X, Y, split=0.1,
-                       subtract_mean):
+def get_train_val_sets(X, Y, subtract_mean, split=0.1):
     """Separates the dataset into training and validation set with splitting
     ratio split.ratio
     Also subtracts the mean of the training image if input"""
@@ -48,10 +49,10 @@ def get_train_val_sets(X, Y, split=0.1,
 def get_data(subtract_mean=False,
              normalize_stamps=True):
     bands = ['i', 'r']
-    path = '/global/homes/s/sowmyak/NN_blend/data/'
-    filename = path + 'gal_pair_band_wldeb.fits'
+    path = os.path.join(os.path.dirname(os.getcwd()), "data")
+    filename = os.path.join(path, 'gal_pair_band_wldeb.fits')
     X = load_images(filename, bands)
-    filename = path + 'central_gal_band_wldeb.fits'
+    filename = os.path.join(path, 'central_gal_band_wldeb.fits')
     Y = load_images(filename, ['i'])
     if normalize_stamps:
         sum_image = X.sum(axis=3).sum(axis=1).sum(axis=1)
