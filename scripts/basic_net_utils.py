@@ -101,8 +101,7 @@ class CNN_deblender(object):
         self.y_out.eval(session=self.sess,
                         feed_dict={self.X: X_test})
 
-    def run_model(self, X_test, X_train, Y_train,
-                  epochs=1, batch_size=64, print_every=100):
+    def run_model(self, X_test, X_train, Y_train, Args):
         # shuffle indicies
         train_indicies = np.arange(X_train.shape[0])
         np.random.shuffle(train_indicies)
@@ -110,20 +109,22 @@ class CNN_deblender(object):
         # if we have a training function, add that to things we compute
         iter_cnt = 0
         train_loss, test_loss = [], []
-        for e in range(epochs):
-            print("running epoch " , e)
+        for e in range(Args.epochs):
+            print("running epoch ", e)
             # keep track of losses and accuracy
             # make sure we iterate over the dataset once
-            for i in range(int(math.ceil(X_test.shape[0] / batch_size))):  ## fix 
+            # fix this
+            for i in range(int(math.ceil(X_test.shape[0] / Args.batch_size))):
                 # generate indicies for the batch
-                start_idx = (i * batch_size)%X_train.shape[0]  #fix
-                idx = train_indicies[start_idx:start_idx + batch_size]
+                # Fix this
+                start_idx = (i * Args.batch_size)%X_train.shape[0]
+                idx = train_indicies[start_idx:start_idx + Args.batch_size]
                 # create a feed dictionary for this batch
                 self.train(X_train[idx, :, :, :],
                            Y_train[idx, :, :])
                 loss = self.get_mean_loss()
                 # print every now and then
-                if (iter_cnt % print_every) == 0:
+                if (iter_cnt % Args.print_every) == 0:
                     print("Iteration {0}: wisth minibatch training loss = {1}" \
                           .format(iter_cnt, loss))
                 iter_cnt += 1
