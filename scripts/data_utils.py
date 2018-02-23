@@ -30,8 +30,7 @@ def get_train_val_sets(X, Y, subtract_mean, split=0.1):
     num = X.shape[0]
     np.random.seed(0)
     validation = np.random.choice(num, int(num * split), replace=False)
-    train = range(num)
-    [train.remove(i) for i in validation]
+    train = np.delete(range(num), validation)
     Y_val = Y[:, :, :, 0][validation]
     X_val = X[validation]
     Y_train = Y[:, :, :, 0][train]
