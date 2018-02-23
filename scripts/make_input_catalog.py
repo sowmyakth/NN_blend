@@ -1,6 +1,3 @@
-import os
-import numpy as np
-from astropy.table import Table, vstack
 """Script creates pair of galaxies in the format of catsim galaxy catalog.
 The central galaxy and second galaxy is picked at random form the OneDegSq.fits
 catsim catalog.
@@ -11,6 +8,9 @@ Total field is made of --num of pstamps: 4 in a row
 
 Ring test not included.
 """
+import os
+import numpy as np
+from astropy.table import Table, vstack
 
 
 def get_galaxies(Args, catdir):
