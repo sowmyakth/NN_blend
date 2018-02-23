@@ -96,9 +96,9 @@ class CNN_deblender(object):
         # setting up variables we want to compute (and optimizing)
         # if we have a training function, add that to things we compute
         iter_cnt = 0
+        train_loss, test_loss = [], []
         for e in range(epochs):
             # keep track of losses and accuracy
-            train_loss, test_loss = [], []
             # make sure we iterate over the dataset once
             for i in range(int(math.ceil(X_test.shape[0] / batch_size))):  ## fix 
                 # generate indicies for the batch
@@ -108,12 +108,13 @@ class CNN_deblender(object):
                 self.train(X_train[idx, :, :, :],
                            Y_train[idx, :, :])
                 loss = self.get_mean_loss()
-                train_loss.append(loss)
                 # print every now and then
                 if (iter_cnt % print_every) == 0:
                     print("Iteration {0}: with minibatch training loss = {1}" \
                           .format(iter_cnt, loss))
                 iter_cnt += 1
+            # save training and test loss every epoch
+            train_loss.append(loss)
             self.test(X_test)
             test_loss.append(self.get_mean_loss())
         return train_loss, test_loss
