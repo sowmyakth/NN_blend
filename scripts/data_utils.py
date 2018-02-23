@@ -5,20 +5,26 @@ from astropy.io import fits
 import numpy as np
 
 
+def get_stamps(full_image, rows, cols, in_size, out_size):
+    num = rows * cols  # Total number of objects
+    low = int(in_size / 2 - out_size / 2)
+    high = int(in_size / 2 + out_size / 2)
+    image_rows = full_image.reshape(rows, in_size, full_image.shape[1])
+    stamps = [image_rows[j].T.reshape(cols, in_size, in_size) for j in range(len(image_rows))]
+    stamps = np.array(stamps).reshape(num, in_size, in_size)
+    stamps = stamps[:, low:high, low:high]
+    return stamps.T
+
+
 def load_images(filename, bands):
     """Returns individual postage stamp images of each blend in each band"""
-    size = 240
-    out_size = 32
-    num, rows, cols = 200, 25, 8
-    low, high = int(size / 2 - out_size / 2), int(size / 2 + out_size / 2)
+    in_size, out_size = 240, 32
+    num = 200
     image = np.zeros([num, out_size, out_size, len(bands)])
     for i, band in enumerate(bands):
         full_image = fits.open(filename.replace("band", band))[0].data
-        image_rows = full_image.reshape(rows, size, full_image.shape[1])
-        stamps = [image_rows[j].T.reshape(cols, size, size) for j in range(len(image_rows))]
-        stamps = np.array(stamps).reshape(num, size, size)
-        stamps = stamps[:, low:high, low:high]
-        image.T[i] = stamps.T
+        image.T[i] = get_stamps(full_image, rows=25, cols=8,
+                                in_size=in_size, out_size=out_size)
     return image
 
 
