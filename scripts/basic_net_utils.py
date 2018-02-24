@@ -12,7 +12,7 @@ def get_deconv_layer(kernel_shape):
     weights = np.zeros(kernel_shape)
     init = tf.constant_initializer(value=weights,
                                    dtype=tf.float32)
-    bi_weights = tf.get_variable(name="decon_bilinear_filter",
+    bi_weights = tf.get_variable(name="decon_bil_krnl",
                                  initializer=init,
                                  shape=weights.shape)
     return bi_weights
