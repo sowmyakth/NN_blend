@@ -107,7 +107,7 @@ class CNN_deblender(object):
         weights.append()
 
     def test(self, X_test,
-            get_interim_images=False):
+             get_interim_images=False):
         """Evaluates net for input X"""
         self.y_out.eval(session=self.sess,
                         feed_dict={self.X: X_test})
@@ -148,6 +148,6 @@ class CNN_deblender(object):
             # save training and test loss every epoch
             train_loss.append(loss)
             if X_test is not None:
-                self.test(X_test, Args.get_interim_images)
+                self.test(X_test)
                 test_loss.append(self.get_mean_loss())
         return train_loss, test_loss
