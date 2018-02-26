@@ -20,7 +20,8 @@ def get_bi_weights(kernel_shape):
 
 class CNN_deblender(object):
     """Class to initialize and run CNN"""
-    def __init__(self, ):
+    def __init__(self, num_cnn_layers=None):
+        self.num_cnn_layers = num_cnn_layers
         self.optimizer = tf.train.AdamOptimizer(5e-4)
         self.sess = tf.Session()
         self.build_net()
@@ -33,7 +34,7 @@ class CNN_deblender(object):
     def simple_model(self):
         """makes a simple 2 layer CNN
         layer 1 Conv 5*5*2s2, 256/ReLU
-        layer 2 FC 32*32,1, 49
+        layer 2 FC 32*32,1, 49s
          """
         Wconv1 = tf.get_variable("Wconv1", shape=[5, 5, 2, 256])
         bconv1 = tf.get_variable("bconv1", shape=[256])
@@ -61,7 +62,7 @@ class CNN_deblender(object):
                                      name="conv2")
             return part3
 
-    def multi_layer_model(self, num_layers):
+    def multi_layer_model(self):
         """A 3 layer CNN
         Conv 3*3*2 s1, 32/ReLU
         [Conv 3*3 s1, 32/Relu] * 3
@@ -71,14 +72,13 @@ class CNN_deblender(object):
                                     padding='VALID',
                                     activation=tf.nn.relu,
                                     scope="conv0")
-        for i in range(num_layers):
+        for i in range(self.num_cnn_layers):
             layer_in = self.basic_unit(layer_in, i)
         # Check this!!
         deconv_weights = get_bi_weights([3, 3, 1, 32])
         y_out = tf.nn.conv2d_transpose(layer_in, deconv_weights,
                                        [None, 32, 32])
         return y_out
-
 
     def build_net(self):
         """makes a simple 2 layer CNN
@@ -88,7 +88,10 @@ class CNN_deblender(object):
         self.X = tf.placeholder(tf.float32, [None, 32, 32, 2])
         self.y = tf.placeholder(tf.float32, [None, 32, 32])
         # Run the preferred CNN model here
-        self.simple_model()
+        if self.num_cnn_layers is not None:
+            self.multi_layer_model()
+        else:
+            self.simple_model()
         self.get_mean_loss()
         self.train_step = self.optimizer.minimize(self.mean_loss)
 
@@ -97,14 +100,15 @@ class CNN_deblender(object):
         feed_dict = {self.X: X_train,
                      self.y: Y_train}
         self.sess.run(variables, feed_dict=feed_dict)
-    
-    def get_interim_images(self, num_layers):
+
+    def get_interim_images(self):
         """Returns values of weights, biases and output images
         from interim activation layers.
         """
         weights, biases, activations = [], [], []
         gr = tf.get_default_graph()
         weights.append()
+        for i in range(self.num_cnn_layers):
 
     def test(self, X_test,
              get_interim_images=False):
