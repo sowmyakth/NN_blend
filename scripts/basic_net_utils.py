@@ -52,12 +52,13 @@ class CNN_deblender(object):
         with tf.variable_scope("basic_unit" + str(i)):
             part1 = tf.layers.conv2d(input_layer, 32, [3, 3],
                                      padding='VALID',
-                                     activation=tf.nn.relu)
-            part2 = tf.layers.batch_norm(part1,
-                                         activation=tf.nn.relu)
+                                     activation=tf.nn.relu,
+                                     name="conv1")
+            part2 = tf.layers.batch_norm(part1)
             part3 = tf.layers.conv2d(part2, 32, [3, 3],
                                      padding='VALID',
-                                     activation=tf.nn.relu)
+                                     activation=tf.nn.relu,
+                                     name="conv2")
             return part3
 
     def multi_layer_model(self, num_layers):
@@ -69,7 +70,7 @@ class CNN_deblender(object):
         layer_in = tf.layers.conv2d(self.X, 32, [3, 3, 2],
                                     padding='VALID',
                                     activation=tf.nn.relu,
-                                    scope="conv_0")
+                                    scope="conv0")
         for i in range(num_layers):
             layer_in = self.basic_unit(layer_in, i)
         # Check this!!
