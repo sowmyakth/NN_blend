@@ -117,7 +117,8 @@ class CNN_deblender(object):
             self.biases = biases
             self.activations = activations
 
-    def run_model(self, X_test, X_train, Y_train, Args):
+    def run_model(self, X_train, Y_train,
+                  Args, X_test=None):
         # shuffle indicies
         train_indicies = np.arange(X_train.shape[0])
         np.random.shuffle(train_indicies)
@@ -146,6 +147,7 @@ class CNN_deblender(object):
                 iter_cnt += 1
             # save training and test loss every epoch
             train_loss.append(loss)
-            self.test(X_test)
-            test_loss.append(self.get_mean_loss())
+            if X_test is not None:
+                self.test(X_test, Args.get_interim_images)
+                test_loss.append(self.get_mean_loss())
         return train_loss, test_loss
