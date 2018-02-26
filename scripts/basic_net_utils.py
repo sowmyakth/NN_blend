@@ -6,7 +6,7 @@ import math
 import tensorflow as tf
 
 
-def get_deconv_layer(kernel_shape):
+def get_bi_weights(kernel_shape):
     """compute intialization weights here"""
     # Add computation here
     weights = np.zeros(kernel_shape)
@@ -73,7 +73,7 @@ class CNN_deblender(object):
         for i in range(num_layers):
             layer_in = self.basic_unit(layer_in, i)
         # Check this!!
-        deconv_weights = get_deconv_layer([3, 3, 1, 32])
+        deconv_weights = get_bi_weights([3, 3, 1, 32])
         y_out = tf.nn.conv2d_transpose(layer_in, deconv_weights,
                                        [None, 32, 32])
         return y_out
@@ -125,7 +125,7 @@ class CNN_deblender(object):
                 loss = self.get_mean_loss()
                 # print every now and then
                 if (iter_cnt % Args.print_every) == 0:
-                    print("Iteration {0}: wisth minibatch training loss = {1}" \
+                    print("Iteration {0}: with minibatch training loss = {1}" \
                           .format(iter_cnt, loss))
                 iter_cnt += 1
             # save training and test loss every epoch
