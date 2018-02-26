@@ -79,6 +79,7 @@ class CNN_deblender(object):
                                        [None, 32, 32])
         return y_out
 
+
     def build_net(self):
         """makes a simple 2 layer CNN
         layer 1 Conv 5*5*2s2, 256/ReLU
@@ -96,11 +97,25 @@ class CNN_deblender(object):
         feed_dict = {self.X: X_train,
                      self.y: Y_train}
         self.sess.run(variables, feed_dict=feed_dict)
+    
+    def get_interim_images(self, num_layers):
+        """Returns values of weights, biases and output images
+        from interim activation layers.
+        """
+        weights, biases, activations = [], [], []
+        gr = tf.get_default_graph()
+        weights.append()
 
-    def test(self, X_test):
+    def test(self, X_test,
+            get_interim_images=False):
         """Evaluates net for input X"""
         self.y_out.eval(session=self.sess,
                         feed_dict={self.X: X_test})
+        if get_interim_images:
+            weights, biases, activations = get_interim_images()
+            self.weights = weights
+            self.biases = biases
+            self.activations = activations
 
     def run_model(self, X_test, X_train, Y_train, Args):
         # shuffle indicies
