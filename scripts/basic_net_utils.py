@@ -10,10 +10,10 @@ import tensorflow as tf
 def get_bi_weights(kernel_shape):
     """compute intialization weights here"""
     # Add computation here
-    weights = np.zeros(kernel_shape)
+    weights = tf.truncated_normal(kernel_shape, stddev=0.1)
     init = tf.constant_initializer(value=weights,
                                    dtype=tf.float32)
-    bi_weights = tf.get_variable(name="decon_bil_krnl",
+    bi_weights = tf.get_variable(name="deconv_bi_kernel",
                                  initializer=init,
                                  shape=weights.shape)
     return bi_weights
@@ -21,7 +21,7 @@ def get_bi_weights(kernel_shape):
 
 class CNN_deblender(object):
     """Class to initialize and run CNN"""
-    def __init__(self, num_cnn_layers=None):
+    def __init__(self, num_cnn_layers=None, summary_hpram=0):
         self.num_cnn_layers = num_cnn_layers
         self.kernels = []
         self.biases = []
@@ -30,12 +30,12 @@ class CNN_deblender(object):
         self.sess = tf.Session()
         self.build_net()
         self.sess.run(tf.global_variables_initializer())
-        self.initiate_writer()
+        self.initiate_writer(summary_hpram)
 
-    def initiate_writer(self):
+    def initiate_writer(self, summary_hpram):
         self.merged = tf.summary.merge_all()
         logdir = os.path.join(os.path.dirname(os.getcwd()),
-                              "logfiles")
+                              "logfiles", str(summary_hpram))
         self.writer = tf.summary.FileWriter(logdir,
                                             self.sess.graph)
 
@@ -79,11 +79,12 @@ class CNN_deblender(object):
         Conv 3*3*2 s1, 32/ReLU
         [Conv 3*3 s1, 32/Relu] * 3
         deconv
-          """
-        layer_in = tf.layers.conv2d(self.X, 32, [3, 3, 2],
-                                    padding='VALID',
-                                    activation=tf.nn.relu,
-                                    scope="conv0")
+        """
+        with tf.variable_scope("first_layer"):
+            layer_in = tf.layers.conv2d(self.X, 32, [3, 3, 2],
+                                        padding='VALID',
+                                        activation=tf.nn.relu,
+                                        scope="conv1")
         for i in range(self.num_cnn_layers):
             layer_in = self.basic_unit(layer_in, i)
         # Check this!!
@@ -147,7 +148,7 @@ class CNN_deblender(object):
         from interim activation layers.
         """
         gr = tf.get_default_graph()
-        layer_name = 'conv_in'
+        layer_name = 'first_layer/conv1'
         self.get_node_values(gr, layer_name)
         self.get_relu_activations(gr, layer_name)
         for i in range(self.num_cnn_layers):
@@ -155,6 +156,9 @@ class CNN_deblender(object):
             self.get_node_values(gr, layer_name)
             self.get_relu_activations(gr, layer_name)
             # self.get_batch_norm_images(gr, layer_name)
+            layer_name = 'basic_unit{0}/conv2'.format(i)
+            self.get_node_values(gr, layer_name)
+            self.get_relu_activations(gr, layer_name)
 
     def test(self, X_test,
              get_interim_images=False):
