@@ -19,6 +19,19 @@ def get_bi_weights(kernel_shape):
     return bi_weights
 
 
+def get_conv_layer(input_layer, kernel_shape, name):
+    """Returns conv2d layer.
+    Defines weight functions W, a tensor of shape kernel size
+    Defines bias b, a tensor vector of shape number of kernels
+    Creates conv layer
+    """
+    Wconv1 = tf.get_variable("W" + name, shape=kernel_shape)
+    bconv1 = tf.get_variable("b" + name, shape=kernel_shape[-1])
+    layer = tf.nn.conv2d(input_layer, Wconv1, strides=[1, 2, 2, 1],
+                         padding='VALID', name=name) + bconv1
+    return layer
+
+
 class CNN_deblender(object):
     """Class to initialize and run CNN"""
     def __init__(self, num_cnn_layers=None, summary_hpram=0):
@@ -30,7 +43,7 @@ class CNN_deblender(object):
         self.sess = tf.Session()
         self.build_net()
         self.sess.run(tf.global_variables_initializer())
-        self.initiate_writer(summary_hpram)
+        # self.initiate_writer(summary_hpram)
 
     def initiate_writer(self, summary_hpram):
         self.merged = tf.summary.merge_all()
@@ -47,14 +60,12 @@ class CNN_deblender(object):
         """makes a simple 2 layer CNN
         layer 1 Conv 5*5*2s2, 256/ReLU
         layer 2 FC 32*32,1, 49s
-         """
-        Wconv1 = tf.get_variable("Wconv1", shape=[5, 5, 2, 256])
-        bconv1 = tf.get_variable("bconv1", shape=[256])
+        """
+        # weights for fully conected layer
         W1 = tf.get_variable("W1", shape=[32, 32, 1, 49])
         b1 = tf.get_variable("b1", shape=[32, 32])
         # define our graph (e.g. two_layer_convnet)
-        a1 = tf.nn.conv2d(self.X, Wconv1, strides=[1, 2, 2, 1],
-                          padding='VALID') + bconv1
+        a1 = get_conv_layer(self.X, [5, 5, 2, 256], "conv1")
         h1 = tf.nn.relu(a1)
         h1_flat = tf.reshape(h1, [32, 32, 49, -1])
         y_out = tf.matmul(W1, h1_flat)
@@ -81,10 +92,8 @@ class CNN_deblender(object):
         deconv
         """
         with tf.variable_scope("first_layer"):
-            layer_in = tf.layers.conv2d(self.X, 32, [3, 3, 2],
-                                        padding='VALID',
-                                        activation=tf.nn.relu,
-                                        scope="conv1")
+            first_cnn = get_conv_layer(self.X, [3, 3, 2, 32], "conv1")
+            layer_in = tf.nn.relu(first_cnn)
         for i in range(self.num_cnn_layers):
             layer_in = self.basic_unit(layer_in, i)
         # Check this!!
@@ -107,7 +116,6 @@ class CNN_deblender(object):
         else:
             self.simple_model()
         self.get_mean_loss()
-
         self.train_step = self.optimizer.minimize(self.mean_loss)
 
     def train(self, X_train, Y_train):
