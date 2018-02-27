@@ -27,7 +27,6 @@ def get_conv_layer(input_layer, kernel_shape, name, stride=2):
     Defines bias b, a tensor vector of shape number of kernels
     Creates conv layer
     """
-    print (input_layer, kernel_shape)
     Wconv1 = tf.get_variable(name="W" + name, shape=kernel_shape)
     bconv1 = tf.get_variable(name="b" + name, shape=kernel_shape[-1])
     layer = tf.nn.conv2d(input_layer, Wconv1,
@@ -101,7 +100,6 @@ class CNN_deblender(object):
             layer_in = tf.nn.relu(first_cnn)
         for i in range(self.num_cnn_layers):
             layer_in = self.basic_unit(layer_in, i)
-        print (layer_in)
         with tf.variable_scope("last_layer"):
             last_cnn = get_conv_layer(layer_in, [3, 3, 32, 1],
                                       "conv_last", stride=1)
@@ -112,10 +110,8 @@ class CNN_deblender(object):
         in_shape = tf.shape(layer_out)
         out_shape = tf.stack([in_shape[0], 32, 32, 1])
         # out_shape = tf.placeholder(tf.int32, [None, 32, 32, 1])
-        r = tf.stack(out_shape)
-        print (r, out_shape)
         self.y_out = tf.nn.conv2d_transpose(layer_out, deconv_weights,
-                                            tf.stack(out_shape), strides=[1, 2, 2, 1])
+                                            out_shape, strides=[1, 2, 2, 1])
 
     def build_net(self):
         """makes a simple 2 layer CNN
@@ -156,7 +152,7 @@ class CNN_deblender(object):
         scope name """
         bar = graph.get_tensor_by_name(
             layer_name + '/Relu:0')
-        activation = self.sess.run(bar)
+        activation = bar.eval(session=self.sess)
         self.activations.append(activation)
 
     def get_batch_norm_images(self, graph,
@@ -174,15 +170,15 @@ class CNN_deblender(object):
         """
         gr = tf.get_default_graph()
         layer_name = 'first_layer/conv1'
-        self.get_node_values(gr, layer_name)
+        self.get_kernel_bias(gr, layer_name)
         self.get_relu_activations(gr, layer_name)
         for i in range(self.num_cnn_layers):
             layer_name = 'basic_unit{0}/conv1'.format(i)
-            self.get_node_values(gr, layer_name)
+            self.get_kernel_bias(gr, layer_name)
             self.get_relu_activations(gr, layer_name)
             # self.get_batch_norm_images(gr, layer_name)
             layer_name = 'basic_unit{0}/conv2'.format(i)
-            self.get_node_values(gr, layer_name)
+            self.get_kernel_bias(gr, layer_name)
             self.get_relu_activations(gr, layer_name)
 
     def test(self, X_test, Y_test,
@@ -207,7 +203,7 @@ class CNN_deblender(object):
         train_loss, test_loss = [], []
         for e in range(Args.epochs):
             # print("running epoch ", e)
-            # keep track of losses and accuracy
+            # keep track of losses
             # make sure we iterate over the dataset once
             # fix this
             for i in range(int(math.ceil(X_test.shape[0] / Args.batch_size))):
