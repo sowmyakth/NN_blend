@@ -37,9 +37,9 @@ def get_train_val_sets(X, Y, subtract_mean, split=0.1):
     np.random.seed(0)
     validation = np.random.choice(num, int(num * split), replace=False)
     train = np.delete(range(num), validation)
-    Y_val = Y[:, :, :, 0][validation]
+    Y_val = Y[validation] #Y[:, :, :, 0][validation]
     X_val = X[validation]
-    Y_train = Y[:, :, :, 0][train]
+    Y_train = Y[train] #Y[:, :, :, 0][train]
     X_train = X[train]
     if subtract_mean:
         mean_image = np.mean(X_train, axis=0)
