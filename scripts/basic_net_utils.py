@@ -89,8 +89,9 @@ class CNN_deblender(object):
             layer_in = self.basic_unit(layer_in, i)
         # Check this!!
         deconv_weights = get_bi_weights([3, 3, 1, 32])
+        shape = tf.Variable([-1, 32, 32, 1], dtype=tf.int32)
         y_out = tf.nn.conv2d_transpose(layer_in, deconv_weights,
-                                       [None, 32, 32])
+                                       shape, strides=[1, 1, 1])
         return y_out
 
     def build_net(self):
@@ -106,6 +107,7 @@ class CNN_deblender(object):
         else:
             self.simple_model()
         self.get_mean_loss()
+
         self.train_step = self.optimizer.minimize(self.mean_loss)
 
     def train(self, X_train, Y_train):
