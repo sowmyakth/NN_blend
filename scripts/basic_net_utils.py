@@ -1,6 +1,7 @@
 """Script to create CNN for retrieving isolated galaxy image from a two
 galaxy blend"""
 # import skimage.io as io
+import os
 import numpy as np
 import math
 import tensorflow as tf
@@ -29,6 +30,14 @@ class CNN_deblender(object):
         self.sess = tf.Session()
         self.build_net()
         self.sess.run(tf.global_variables_initializer())
+        self.initiate_writer()
+
+    def initiate_writer(self):
+        self.merged = tf.summary.merge_all()
+        logdir = os.path.join(os.path.dirname(os.getcwd()),
+                              "logfiles")
+        self.writer = tf.summary.FileWriter(logdir,
+                                            self.sess.graph)
 
     def get_mean_loss(self):
         total_loss = tf.nn.l2_loss(self.y - self.y_out)
