@@ -172,7 +172,7 @@ class CNN_deblender(object):
             for i in range(int(math.ceil(X_test.shape[0] / Args.batch_size))):
                 # generate indicies for the batch
                 # Fix this
-                start_idx = (i * Args.batch_size)%X_train.shape[0]
+                start_idx = (i * Args.batch_size) % X_train.shape[0]
                 idx = train_indicies[start_idx:start_idx + Args.batch_size]
                 # create a feed dictionary for this batch
                 self.train(X_train[idx, :, :, :],
@@ -180,7 +180,7 @@ class CNN_deblender(object):
                 loss = self.get_mean_loss()
                 # print every now and then
                 if (iter_cnt % Args.print_every) == 0:
-                    print("Iteration {0}: with minibatch training loss = {1}" \
+                    print("Iteration {0}: with minibatch training loss = {1}"
                           .format(iter_cnt, loss))
                 iter_cnt += 1
             # save training and test loss every epoch
