@@ -22,6 +22,9 @@ class CNN_deblender(object):
     """Class to initialize and run CNN"""
     def __init__(self, num_cnn_layers=None):
         self.num_cnn_layers = num_cnn_layers
+        self.kernels = []
+        self.biases = []
+        self.activations = []
         self.optimizer = tf.train.AdamOptimizer(5e-4)
         self.sess = tf.Session()
         self.build_net()
@@ -55,7 +58,7 @@ class CNN_deblender(object):
                                      padding='VALID',
                                      activation=tf.nn.relu,
                                      name="conv1")
-            part2 = tf.layers.batch_norm(part1)
+            part2 = part1  # tf.layers.batch_norm(part1)
             part3 = tf.layers.conv2d(part2, 32, [3, 3],
                                      padding='VALID',
                                      activation=tf.nn.relu,
@@ -101,14 +104,48 @@ class CNN_deblender(object):
                      self.y: Y_train}
         self.sess.run(variables, feed_dict=feed_dict)
 
+    def get_kernel_bias(self, graph,
+                        layer_name):
+        """Returns kernel values and bias of layers
+        for a given scope name"""
+        kernel = self.sess.run(graph.get_tensor_by_name(
+            layer_name + '/kernel:0'))
+        bias = self.sess.run(graph.get_tensor_by_name(
+            layer_name + '/bias:0'))
+        self.kernels.append(kernel)
+        self.biases.append(bias)
+
+    def get_relu_activations(self, graph,
+                             layer_name):
+        """Returns output from activation layer for a given input
+        scope name """
+        bar = graph.get_tensor_by_name(
+            layer_name + '/Relu:0')
+        activation = self.sess.run(bar)
+        self.activations.append(activation)
+
+    def get_batch_norm_images(self, graph,
+                              layer_name):
+        """Returns output from batch normalization for a given input
+        scope name """
+        bar = graph.get_tensor_by_name(
+            layer_name + '/Relu:0')
+        activation = self.sess.run(bar)
+        self.activations.append(activation)
+
     def get_interim_images(self):
         """Returns values of weights, biases and output images
         from interim activation layers.
         """
-        weights, biases, activations = [], [], []
         gr = tf.get_default_graph()
-        weights.append()
+        layer_name = 'conv_in'
+        self.get_node_values(gr, layer_name)
+        self.get_relu_activations(gr, layer_name)
         for i in range(self.num_cnn_layers):
+            layer_name = 'basic_unit{0}/conv1'.format(i)
+            self.get_node_values(gr, layer_name)
+            self.get_relu_activations(gr, layer_name)
+            # self.get_batch_norm_images(gr, layer_name)
 
     def test(self, X_test,
              get_interim_images=False):
@@ -116,10 +153,7 @@ class CNN_deblender(object):
         self.y_out.eval(session=self.sess,
                         feed_dict={self.X: X_test})
         if get_interim_images:
-            weights, biases, activations = get_interim_images()
-            self.weights = weights
-            self.biases = biases
-            self.activations = activations
+            self.get_interim_images()
 
     def run_model(self, X_train, Y_train,
                   Args, X_test=None):
