@@ -7,27 +7,31 @@ import math
 import tensorflow as tf
 
 
-def get_bi_weights(kernel_shape):
+def get_bi_weights(kernel_shape, name='weights'):
     """compute intialization weights here"""
     # Add computation here
-    weights = tf.truncated_normal(kernel_shape, stddev=0.1)
-    init = tf.constant_initializer(value=weights,
-                                   dtype=tf.float32)
-    bi_weights = tf.get_variable(name="deconv_bi_kernel",
-                                 initializer=init,
-                                 shape=weights.shape)
+    weights = tf.truncated_normal(kernel_shape, stddev=0.1,
+                                  name=name)
+    # init = tf.constant_initializer(value=weights,
+    #                               dtype=tf.float32)
+    # bi_weights = tf.get_variable(name="deconv_bi_kernel",
+    #                             initializer=init,
+    #                             shape=kernel_shape)
+    bi_weights = tf.Variable(weights)
     return bi_weights
 
 
-def get_conv_layer(input_layer, kernel_shape, name):
+def get_conv_layer(input_layer, kernel_shape, name, stride=2):
     """Returns conv2d layer.
     Defines weight functions W, a tensor of shape kernel size
     Defines bias b, a tensor vector of shape number of kernels
     Creates conv layer
     """
-    Wconv1 = tf.get_variable("W" + name, shape=kernel_shape)
-    bconv1 = tf.get_variable("b" + name, shape=kernel_shape[-1])
-    layer = tf.nn.conv2d(input_layer, Wconv1, strides=[1, 2, 2, 1],
+    print (input_layer, kernel_shape)
+    Wconv1 = tf.get_variable(name="W" + name, shape=kernel_shape)
+    bconv1 = tf.get_variable(name="b" + name, shape=kernel_shape[-1])
+    layer = tf.nn.conv2d(input_layer, Wconv1,
+                         strides=[1, stride, stride, 1],
                          padding='VALID', name=name) + bconv1
     return layer
 
@@ -92,16 +96,26 @@ class CNN_deblender(object):
         deconv
         """
         with tf.variable_scope("first_layer"):
-            first_cnn = get_conv_layer(self.X, [3, 3, 2, 32], "conv1")
+            first_cnn = get_conv_layer(self.X, [3, 3, 2, 32],
+                                       "conv1", stride=1)
             layer_in = tf.nn.relu(first_cnn)
         for i in range(self.num_cnn_layers):
             layer_in = self.basic_unit(layer_in, i)
+        print (layer_in)
+        with tf.variable_scope("last_layer"):
+            last_cnn = get_conv_layer(layer_in, [3, 3, 32, 1],
+                                      "conv_last", stride=1)
+            layer_out = tf.nn.relu(last_cnn)
         # Check this!!
-        deconv_weights = get_bi_weights([3, 3, 1, 32])
-        shape = tf.Variable([-1, 32, 32, 1], dtype=tf.int32)
-        y_out = tf.nn.conv2d_transpose(layer_in, deconv_weights,
-                                       shape, strides=[1, 1, 1])
-        return y_out
+        deconv_weights = get_bi_weights([2, 2, 1, 1])
+        # shape = tf.Variable([-1, 32, 32, 1], dtype=tf.int32)
+        in_shape = tf.shape(layer_out)
+        out_shape = tf.stack([in_shape[0], 32, 32, 1])
+        # out_shape = tf.placeholder(tf.int32, [None, 32, 32, 1])
+        r = tf.stack(out_shape)
+        print (r, out_shape)
+        self.y_out = tf.nn.conv2d_transpose(layer_out, deconv_weights,
+                                            tf.stack(out_shape), strides=[1, 2, 2, 1])
 
     def build_net(self):
         """makes a simple 2 layer CNN
@@ -109,7 +123,7 @@ class CNN_deblender(object):
         layer 2 FC 32*32,1, 49
          """
         self.X = tf.placeholder(tf.float32, [None, 32, 32, 2])
-        self.y = tf.placeholder(tf.float32, [None, 32, 32])
+        self.y = tf.placeholder(tf.float32, [None, 32, 32, 1])
         # Run the preferred CNN model here
         if self.num_cnn_layers is not None:
             self.multi_layer_model()
@@ -119,10 +133,11 @@ class CNN_deblender(object):
         self.train_step = self.optimizer.minimize(self.mean_loss)
 
     def train(self, X_train, Y_train):
-        variables = [self.train_step]
+        variables = [self.mean_loss, self.train_step]
         feed_dict = {self.X: X_train,
                      self.y: Y_train}
-        self.sess.run(variables, feed_dict=feed_dict)
+        loss, _ = self.sess.run(variables, feed_dict=feed_dict)
+        return loss
 
     def get_kernel_bias(self, graph,
                         layer_name):
@@ -170,16 +185,19 @@ class CNN_deblender(object):
             self.get_node_values(gr, layer_name)
             self.get_relu_activations(gr, layer_name)
 
-    def test(self, X_test,
+    def test(self, X_test, Y_test,
              get_interim_images=False):
         """Evaluates net for input X"""
-        self.y_out.eval(session=self.sess,
-                        feed_dict={self.X: X_test})
+        variables = [self.mean_loss]
+        feed_dict = {self.X: X_test,
+                     self.y: Y_test}
+        loss = self.sess.run(variables, feed_dict=feed_dict)
         if get_interim_images:
             self.get_interim_images()
+        return loss
 
     def run_model(self, X_train, Y_train,
-                  Args, X_test=None):
+                  Args, X_test=None, Y_test=None):
         # shuffle indicies
         train_indicies = np.arange(X_train.shape[0])
         np.random.shuffle(train_indicies)
@@ -188,7 +206,7 @@ class CNN_deblender(object):
         iter_cnt = 0
         train_loss, test_loss = [], []
         for e in range(Args.epochs):
-            print("running epoch ", e)
+            # print("running epoch ", e)
             # keep track of losses and accuracy
             # make sure we iterate over the dataset once
             # fix this
@@ -198,9 +216,9 @@ class CNN_deblender(object):
                 start_idx = (i * Args.batch_size) % X_train.shape[0]
                 idx = train_indicies[start_idx:start_idx + Args.batch_size]
                 # create a feed dictionary for this batch
-                self.train(X_train[idx, :, :, :],
-                           Y_train[idx, :, :])
-                loss = self.get_mean_loss()
+                loss = self.train(X_train[idx, :, :, :],
+                                  Y_train[idx, :, :, :])
+                # loss = self.get_mean_loss()
                 # print every now and then
                 if (iter_cnt % Args.print_every) == 0:
                     print("Iteration {0}: with minibatch training loss = {1}"
@@ -209,6 +227,9 @@ class CNN_deblender(object):
             # save training and test loss every epoch
             train_loss.append(loss)
             if X_test is not None:
-                self.test(X_test)
-                test_loss.append(self.get_mean_loss())
-        return train_loss, test_loss
+                loss = self.test(X_test, Y_test)
+                test_loss.append(loss)
+        feed_dict = {self.X: X_test,
+                     self.y: Y_test}
+        pred = self.y_out.eval(session=self.sess, feed_dict=feed_dict)
+        return train_loss, test_loss, pred
