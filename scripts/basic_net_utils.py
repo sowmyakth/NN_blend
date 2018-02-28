@@ -10,14 +10,13 @@ import tensorflow as tf
 def get_bi_weights(kernel_shape, name='weights'):
     """compute intialization weights here"""
     # Add computation here
-    weights = tf.truncated_normal(kernel_shape, stddev=0.1,
-                                  name=name)
+    weights = tf.truncated_normal(kernel_shape, stddev=0.1)
     # init = tf.constant_initializer(value=weights,
     #                               dtype=tf.float32)
     # bi_weights = tf.get_variable(name="deconv_bi_kernel",
     #                             initializer=init,
     #                             shape=kernel_shape)
-    bi_weights = tf.Variable(weights)
+    bi_weights = tf.Variable(weights, name=name)
     return bi_weights
 
 
@@ -42,11 +41,10 @@ class CNN_deblender(object):
         self.kernels = []
         self.biases = []
         self.activations = []
-        self.optimizer = tf.train.AdamOptimizer(5e-4)
         self.sess = tf.Session()
         self.build_net()
         self.sess.run(tf.global_variables_initializer())
-        self.initiate_writer(summary_hpram)
+        # self.initiate_writer(summary_hpram)
 
     def initiate_writer(self, summary_hpram):
         # self.merged = tf.summary.merge_all()
@@ -57,7 +55,7 @@ class CNN_deblender(object):
         self.writer.add_graph(self.sess.graph)
 
     def get_mean_loss(self):
-        total_loss = tf.nn.l2_loss(self.y - self.y_out)
+        total_loss = tf.nn.l2_loss((self.y - self.y_out) * 100)
         self.mean_loss = tf.reduce_mean(total_loss)
 
     def simple_model(self):
@@ -83,16 +81,43 @@ class CNN_deblender(object):
         """
         # weights for fully conected layer
         # define our graph (e.g. two_layer_convnet)
-        a1 = get_conv_layer(self.X, [3, 3, 2, 256], "conv1")
+        a1 = get_conv_layer(self.X, [2, 2, 2, 256], "conv1")
         layer1 = tf.nn.relu(a1)
         # Check this!!
-        deconv_weights = get_bi_weights([2, 2, 1, 1])
+        deconv_weights = get_bi_weights([2, 2, 1, 256])
         # shape = tf.Variable([-1, 32, 32, 1], dtype=tf.int32)
         in_shape = tf.shape(layer1)
         out_shape = tf.stack([in_shape[0], 32, 32, 1])
         # out_shape = tf.placeholder(tf.int32, [None, 32, 32, 1])
+        print (deconv_weights, layer1)
         self.y_out = tf.nn.conv2d_transpose(layer1, deconv_weights,
-                                            out_shape, strides=[1, 2, 2, 1])
+                                            out_shape, strides=[1, 2, 2, 1],
+                                            name="deconv", padding='VALID')
+
+    def simple_model3(self):
+        """makes a simple 2 layer CNN
+        layer 1 Conv 5*5*2s2, 256/ReLU
+        layer 2 FC 32*32,1, 49s
+        """
+        # weights for fully conected layer
+        # define our graph (e.g. two_layer_convnet)
+        a1 = get_conv_layer(self.X, [5, 5, 2, 32], "conv1", stride=1)
+        layer1 = tf.nn.relu(a1)
+        a2 = get_conv_layer(a1, [3, 3, 32, 1], "conv2", stride=1)
+        layer2 = tf.nn.relu(a2)
+        # Check this!!
+        # shape = tf.Variable([-1, 32, 32, 1], dtype=tf.int32)
+        in_shape = tf.shape(layer2)
+        out_shape = tf.stack([in_shape[0], 32, 32, 1])
+        # out_shape = tf.placeholder(tf.int32, [None, 32, 32, 1])
+        print (layer1, layer2)
+        with tf.name_scope("deconv_layer"):
+            deconv_weights = get_bi_weights([7, 7, 1, 1])
+            self.y_out = tf.nn.conv2d_transpose(layer2, deconv_weights,
+                                                out_shape,
+                                                strides=[1, 1, 1, 1],
+                                                name="transpose",
+                                                padding='VALID')
 
     def basic_unit(self, input_layer, i):
         with tf.variable_scope("basic_unit" + str(i)):
@@ -129,23 +154,28 @@ class CNN_deblender(object):
         in_shape = tf.shape(layer_out)
         out_shape = tf.stack([in_shape[0], 32, 32, 1])
         # out_shape = tf.placeholder(tf.int32, [None, 32, 32, 1])
-        self.y_out = tf.nn.conv2d_transpose(layer_out, deconv_weights,
-                                            out_shape, strides=[1, 2, 2, 1])
+        with tf.name_scope("deconv_layer"):
+            self.y_out = tf.nn.conv2d_transpose(layer_out, deconv_weights,
+                                                out_shape,
+                                                strides=[1, 2, 2, 1])
 
     def build_net(self):
         """makes a simple 2 layer CNN
         layer 1 Conv 5*5*2s2, 256/ReLU
         layer 2 FC 32*32,1, 49
          """
-        self.X = tf.placeholder(tf.float32, [None, 32, 32, 2])
-        self.y = tf.placeholder(tf.float32, [None, 32, 32, 1])
+        with tf.name_scope("input"):
+            self.X = tf.placeholder(tf.float32, [None, 32, 32, 2])
+            self.y = tf.placeholder(tf.float32, [None, 32, 32, 1])
         # Run the preferred CNN model here
         if self.num_cnn_layers is not None:
             self.multi_layer_model()
         else:
-            self.simple_model2()
+            self.simple_model3()
         self.get_mean_loss()
-        self.train_step = self.optimizer.minimize(self.mean_loss)
+        with tf.name_scope("train"):
+            self.optimizer = tf.train.AdamOptimizer(5e-4)
+            self.train_step = self.optimizer.minimize(self.mean_loss)
 
     def train(self, X_train, Y_train):
         variables = [self.mean_loss, self.train_step]
