@@ -7,6 +7,21 @@ import math
 import tensorflow as tf
 
 
+class Meas_args(object):
+    """Arguments to pass to model on how it should run.
+
+    Keyword arguments:
+    epochs      -- number of epochs to run (default:200)
+    batch_size  -- number of input objects in each batch (default:16)
+    print_every -- frequency to print loss  (default:100)
+    """
+    def __init__(self, epochs=200, batch_size=16,
+                 print_every=100):
+        self.epochs = epochs
+        self.batch_size = batch_size
+        self.print_every = print_every
+
+
 def get_bi_weights(kernel_shape, name='weights'):
     """compute intialization weights here"""
     # Add computation here
@@ -46,7 +61,7 @@ class CNN_deblender(object):
         self.sess = tf.Session()
         self.build_net()
         self.sess.run(tf.global_variables_initializer())
-        # self.initiate_writer(summary_hpram)
+        self.initiate_writer(summary_hpram)
 
     def initiate_writer(self, summary_hpram):
         self.merged = tf.summary.merge_all()
@@ -105,7 +120,7 @@ class CNN_deblender(object):
         # define our graph (e.g. two_layer_convnet)
         a1 = get_conv_layer(self.X, [5, 5, 2, 32], "conv1", stride=1)
         layer1 = tf.nn.relu(a1)
-        a2 = get_conv_layer(a1, [3, 3, 32, 1], "conv2", stride=1)
+        a2 = get_conv_layer(layer1, [3, 3, 32, 1], "conv2", stride=1)
         layer2 = tf.nn.relu(a2)
         # Check this!!
         # shape = tf.Variable([-1, 32, 32, 1], dtype=tf.int32)
@@ -181,10 +196,8 @@ class CNN_deblender(object):
             self.optimizer = tf.train.AdamOptimizer(5e-4)
             self.train_step = self.optimizer.minimize(self.mean_loss)
 
-    def train(self, X_train, Y_train):
+    def train(self, feed_dict):
         variables = [self.mean_loss, self.train_step]
-        feed_dict = {self.X: X_train,
-                     self.y: Y_train}
         loss, _ = self.sess.run(variables, feed_dict=feed_dict)
         return loss
 
@@ -234,20 +247,19 @@ class CNN_deblender(object):
             self.get_kernel_bias(gr, layer_name)
             self.get_relu_activations(gr, layer_name)
 
+    def get_summary(self, feed_dict, num):
+        """evealuates summary items"""
+        s = self.sess.run([self.merged],
+                          feed_dict=feed_dict)
+        self.writer.add_summary(s, num)
+
     def test(self, X_test, Y_test,
-             get_interim_images=False,
-             summary_num=None):
+             get_interim_images=False):
         """Evaluates net for input X"""
         variables = [self.mean_loss]
         feed_dict = {self.X: X_test,
                      self.y: Y_test}
-        if summary_num is not None:
-            variables.append(self.merged)
-            loss, s = self.sess.run(variables, feed_dict=feed_dict)
-            self.writer.add_summary(s, summary_num)
-
-        else:
-            loss = self.sess.run(variables, feed_dict=feed_dict)
+        loss = self.sess.run(variables, feed_dict=feed_dict)
         if get_interim_images:
             self.get_interim_images()
         return loss
@@ -272,13 +284,14 @@ class CNN_deblender(object):
                 start_idx = (i * Args.batch_size) % X_train.shape[0]
                 idx = train_indicies[start_idx:start_idx + Args.batch_size]
                 # create a feed dictionary for this batch
-                loss = self.train(X_train[idx, :, :, :],
-                                  Y_train[idx, :, :, :])
-                # loss = self.get_mean_loss()
+                feed_dict = {self.X: X_train[idx, :, :, :],
+                             self.y: Y_train[idx, :, :, :]}
+                loss = self.train(feed_dict)
                 # print every now and then
                 if (iter_cnt % Args.print_every) == 0:
                     print("Iteration {0}: with minibatch training loss = {1}"
                           .format(iter_cnt, loss))
+                    self.get_summary(feed_dict, i)
                 iter_cnt += 1
             # save training and test loss every epoch
             train_loss.append(loss)
