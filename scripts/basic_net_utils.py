@@ -27,7 +27,9 @@ def get_conv_layer(input_layer, kernel_shape, name, stride=2):
     Creates conv layer
     """
     Wconv1 = tf.get_variable(name="W" + name, shape=kernel_shape)
+    tf.summary.histogram("W" + name, Wconv1)
     bconv1 = tf.get_variable(name="b" + name, shape=kernel_shape[-1])
+    tf.summary.histogram("b" + name, bconv1)
     layer = tf.nn.conv2d(input_layer, Wconv1,
                          strides=[1, stride, stride, 1],
                          padding='VALID', name=name) + bconv1
@@ -47,7 +49,7 @@ class CNN_deblender(object):
         # self.initiate_writer(summary_hpram)
 
     def initiate_writer(self, summary_hpram):
-        # self.merged = tf.summary.merge_all()
+        self.merged = tf.summary.merge_all()
         logdir = os.path.join(os.path.dirname(os.getcwd()),
                               "logfiles", str(summary_hpram))
         self.writer = tf.summary.FileWriter(logdir,
@@ -113,6 +115,7 @@ class CNN_deblender(object):
         print (layer1, layer2)
         with tf.name_scope("deconv_layer"):
             deconv_weights = get_bi_weights([7, 7, 1, 1])
+            tf.summary.histogram("deconv_weights", deconv_weights)
             self.y_out = tf.nn.conv2d_transpose(layer2, deconv_weights,
                                                 out_shape,
                                                 strides=[1, 1, 1, 1],
@@ -173,6 +176,7 @@ class CNN_deblender(object):
         else:
             self.simple_model3()
         self.get_mean_loss()
+        tf.summary.scalar("loss", self.mean_loss)
         with tf.name_scope("train"):
             self.optimizer = tf.train.AdamOptimizer(5e-4)
             self.train_step = self.optimizer.minimize(self.mean_loss)
@@ -231,12 +235,19 @@ class CNN_deblender(object):
             self.get_relu_activations(gr, layer_name)
 
     def test(self, X_test, Y_test,
-             get_interim_images=False):
+             get_interim_images=False,
+             summary_num=None):
         """Evaluates net for input X"""
         variables = [self.mean_loss]
         feed_dict = {self.X: X_test,
                      self.y: Y_test}
-        loss = self.sess.run(variables, feed_dict=feed_dict)
+        if summary_num is not None:
+            variables.append(self.merged)
+            loss, s = self.sess.run(variables, feed_dict=feed_dict)
+            self.writer.add_summary(s, summary_num)
+
+        else:
+            loss = self.sess.run(variables, feed_dict=feed_dict)
         if get_interim_images:
             self.get_interim_images()
         return loss
