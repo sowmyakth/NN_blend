@@ -1,6 +1,17 @@
 """Set of unit tests for the CNNN deblender network"""
 from data_utils import get_data
 import numpy as np
+import tensorflow as tf
+import basic_net_utils as utils
+
+
+def load_net():
+    """Tests if CNN deblender model can be loaded"""
+    tf.reset_default_graph()
+    model = utils.CNN_deblender()
+    assert len(model.biases) == 0, "biases list is not empty"
+    assert len(model.kernels) == 0, "biases list is not empty"
+    assert len(model.activations) == 0, "biases list is not empty"
 
 
 def load_data():
@@ -17,7 +28,8 @@ def load_data():
 
 def main():
     """All unit test functions are called here"""
-    load_data()
+    load_net()
+    # load_data()
     print ("All tests passed")
 
 
