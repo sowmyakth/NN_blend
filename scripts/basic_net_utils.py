@@ -41,13 +41,17 @@ def get_conv_layer(input_layer, kernel_shape, name, stride=2):
     Defines bias b, a tensor vector of shape number of kernels
     Creates conv layer
     """
-    Wconv1 = tf.get_variable(name="W" + name, shape=kernel_shape)
-    tf.summary.histogram("W" + name, Wconv1)
-    bconv1 = tf.get_variable(name="b" + name, shape=kernel_shape[-1])
-    tf.summary.histogram("b" + name, bconv1)
-    layer = tf.nn.conv2d(input_layer, Wconv1,
+    # Wconv1 = tf.get_variable(name="W" + name, shape=kernel_shape)
+    W = tf.Variable(tf.truncated_normal(kernel_shape, stddev=0.1),
+                    name="W" + name,)
+    tf.summary.histogram("W" + name + "_summ", W)
+    # bconv1 = tf.get_variable(name="b" + name, shape=kernel_shape[-1])
+    b = tf.Variable(tf.truncated_normal([kernel_shape[-1]], stddev=0.1),
+                    name="b" + name)
+    tf.summary.histogram("b" + name + "_summ", b)
+    layer = tf.nn.conv2d(input_layer, W,
                          strides=[1, stride, stride, 1],
-                         padding='VALID', name=name) + bconv1
+                         padding='VALID', name=name) + b
     return layer
 
 
@@ -60,11 +64,11 @@ class CNN_deblender(object):
         self.activations = []
         self.sess = tf.Session()
         self.build_net()
+        self.merged = tf.summary.merge_all()
         self.sess.run(tf.global_variables_initializer())
         self.initiate_writer(summary_hpram)
 
     def initiate_writer(self, summary_hpram):
-        self.merged = tf.summary.merge_all()
         logdir = os.path.join(os.path.dirname(os.getcwd()),
                               "logfiles", str(summary_hpram))
         self.writer = tf.summary.FileWriter(logdir,
@@ -72,7 +76,7 @@ class CNN_deblender(object):
         self.writer.add_graph(self.sess.graph)
 
     def get_mean_loss(self):
-        total_loss = tf.nn.l2_loss((self.y - self.y_out) * 100)
+        total_loss = tf.nn.l2_loss(self.y - self.y_out)
         self.mean_loss = tf.reduce_mean(total_loss)
 
     def simple_model(self):
@@ -118,24 +122,26 @@ class CNN_deblender(object):
         """
         # weights for fully conected layer
         # define our graph (e.g. two_layer_convnet)
-        a1 = get_conv_layer(self.X, [5, 5, 2, 32], "conv1", stride=1)
-        layer1 = tf.nn.relu(a1)
-        a2 = get_conv_layer(layer1, [3, 3, 32, 1], "conv2", stride=1)
-        layer2 = tf.nn.relu(a2)
+        with tf.name_scope("conv_layer1"):
+            a1 = get_conv_layer(self.X, [5, 5, 2, 32], "conv1", stride=1)
+            layer1 = tf.nn.relu(a1)
+        with tf.name_scope("conv_layer2"):
+            a2 = get_conv_layer(layer1, [3, 3, 32, 1], "conv2", stride=1)
+            layer2 = tf.nn.relu(a2)
         # Check this!!
         # shape = tf.Variable([-1, 32, 32, 1], dtype=tf.int32)
-        in_shape = tf.shape(layer2)
-        out_shape = tf.stack([in_shape[0], 32, 32, 1])
+        out_shape = tf.stack([tf.shape(layer2)[0], 32, 32, 1])
         # out_shape = tf.placeholder(tf.int32, [None, 32, 32, 1])
         print (layer1, layer2)
         with tf.name_scope("deconv_layer"):
             deconv_weights = get_bi_weights([7, 7, 1, 1])
             tf.summary.histogram("deconv_weights", deconv_weights)
-            self.y_out = tf.nn.conv2d_transpose(layer2, deconv_weights,
-                                                out_shape,
-                                                strides=[1, 1, 1, 1],
-                                                name="transpose",
-                                                padding='VALID')
+            layer3 = tf.nn.conv2d_transpose(layer2, deconv_weights,
+                                            out_shape,
+                                            strides=[1, 1, 1, 1],
+                                            name="transpose",
+                                            padding='VALID')
+            self.y_out = tf.nn.relu(layer3)
 
     def basic_unit(self, input_layer, i):
         with tf.variable_scope("basic_unit" + str(i)):
@@ -249,8 +255,8 @@ class CNN_deblender(object):
 
     def get_summary(self, feed_dict, num):
         """evealuates summary items"""
-        s = self.sess.run([self.merged],
-                          feed_dict=feed_dict)
+        [s] = self.sess.run([self.merged],
+                            feed_dict=feed_dict)
         self.writer.add_summary(s, num)
 
     def test(self, X_test, Y_test,
@@ -291,6 +297,7 @@ class CNN_deblender(object):
                 if (iter_cnt % Args.print_every) == 0:
                     print("Iteration {0}: with minibatch training loss = {1}"
                           .format(iter_cnt, loss))
+                if (iter_cnt % 5) == 0:
                     self.get_summary(feed_dict, i)
                 iter_cnt += 1
             # save training and test loss every epoch
