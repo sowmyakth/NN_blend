@@ -61,8 +61,8 @@ def get_data(subtract_mean=False,
     Y = load_images(filename, ['i'])
     if normalize_stamps:
         sum_image = X.sum(axis=3).sum(axis=1).sum(axis=1)
-        X = (X.T / sum_image.T).T
-        sum_image = Y.sum(axis=3).sum(axis=1).sum(axis=1)
-        Y = (Y.T / sum_image.T).T
+        X = (X.T / sum_image.T).T * 100
+        # sum_image = Y.sum(axis=3).sum(axis=1).sum(axis=1)
+        Y = (Y.T / sum_image.T).T * 100
     X_train, Y_train, X_val, Y_val = get_train_val_sets(X, Y, subtract_mean)
     return X_train, Y_train, X_val, Y_val
