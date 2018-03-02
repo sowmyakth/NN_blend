@@ -9,7 +9,6 @@ import tensorflow as tf
 
 class Meas_args(object):
     """Arguments to pass to model on how it should run.
-
     Keyword arguments:
     epochs      -- number of epochs to run (default:200)
     batch_size  -- number of input objects in each batch (default:16)
