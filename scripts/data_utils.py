@@ -37,9 +37,9 @@ def get_train_val_sets(X, Y, subtract_mean, split=0.1):
     np.random.seed(0)
     validation = np.random.choice(num, int(num * split), replace=False)
     train = np.delete(range(num), validation)
-    Y_val = Y[validation] #Y[:, :, :, 0][validation]
+    Y_val = Y[validation]  # Y[:, :, :, 0][validation]
     X_val = X[validation]
-    Y_train = Y[train] #Y[:, :, :, 0][train]
+    Y_train = Y[train]  # Y[:, :, :, 0][train]
     X_train = X[train]
     if subtract_mean:
         mean_image = np.mean(X_train, axis=0)
@@ -53,14 +53,14 @@ def get_train_val_sets(X, Y, subtract_mean, split=0.1):
 
 def get_data(subtract_mean=False,
              normalize_stamps=True):
-    bands = ['i', 'r']
+    bands = ['i', 'r', 'g']
     path = os.path.join(os.path.dirname(os.getcwd()), "data")
     filename = os.path.join(path, 'gal_pair_band_wldeb.fits')
     X = load_images(filename, bands)
     filename = os.path.join(path, 'central_gal_band_wldeb.fits')
     Y = load_images(filename, ['i'])
     if normalize_stamps:
-        sum_image = X.sum(axis=3).sum(axis=1).sum(axis=1)
+        sum_image = X.sum(axis=4).sum(axis=1).sum(axis=1)
         X = (X.T / sum_image.T).T * 100
         # sum_image = Y.sum(axis=3).sum(axis=1).sum(axis=1)
         Y = (Y.T / sum_image.T).T * 100
