@@ -1,5 +1,9 @@
-"""Creatres input catalog which is then run via WLDeblending package 
-to produce galaxy images
+"""Creatres input catalog which is then run via WLDeblending package
+to produce galaxy images.
+Setting input option make_input_catalog to False implies the base catlog will
+not be created and the debelending package will run for the input options
+and input catalogs as the already exosting gal_pair_catalog.fits and
+central_gal_catalog.fits.
 """
 import os
 import subprocess
