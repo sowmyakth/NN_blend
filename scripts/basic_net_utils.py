@@ -62,6 +62,7 @@ class CNN_deblender(object):
         self.kernels = []
         self.biases = []
         self.activations = []
+        tf.reset_default_graph()
         self.sess = tf.Session()
         self.build_net()
         self.merged = tf.summary.merge_all()
@@ -71,13 +72,8 @@ class CNN_deblender(object):
     def initiate_writer(self, summary_hpram):
         logdir = os.path.join(os.path.dirname(os.getcwd()),
                               "logfiles", str(summary_hpram))
-        self.writer = tf.summary.FileWriter(logdir,
-                                            self.sess.graph)
+        self.writer = tf.summary.FileWriter(logdir)
         self.writer.add_graph(self.sess.graph)
-
-    def get_mean_loss(self):
-        total_loss = tf.nn.l2_loss(self.y - self.y_out)
-        self.mean_loss = tf.reduce_mean(total_loss)
 
     def simple_model(self):
         """makes a simple 2 layer CNN
@@ -111,9 +107,10 @@ class CNN_deblender(object):
         out_shape = tf.stack([in_shape[0], 32, 32, 1])
         # out_shape = tf.placeholder(tf.int32, [None, 32, 32, 1])
         print (deconv_weights, layer1)
-        self.y_out = tf.nn.conv2d_transpose(layer1, deconv_weights,
-                                            out_shape, strides=[1, 2, 2, 1],
-                                            name="deconv", padding='VALID')
+        y_out = tf.nn.conv2d_transpose(layer1, deconv_weights,
+                                       out_shape, strides=[1, 2, 2, 1],
+                                       name="deconv", padding='VALID')
+        return y_out
 
     def simple_model3(self):
         """makes a simple 2 layer CNN
@@ -124,24 +121,26 @@ class CNN_deblender(object):
         # define our graph (e.g. two_layer_convnet)
         with tf.name_scope("conv_layer1"):
             a1 = get_conv_layer(self.X, [5, 5, 2, 32], "conv1", stride=1)
-            layer1 = tf.nn.relu(a1)
+            layer1 = tf.nn.crelu(a1)
         with tf.name_scope("conv_layer2"):
-            a2 = get_conv_layer(layer1, [3, 3, 32, 1], "conv2", stride=1)
-            layer2 = tf.nn.relu(a2)
+            a2 = get_conv_layer(layer1, [3, 3, 64, 1], "conv2", stride=1)
+            layer2 = tf.nn.crelu(a2)
         # Check this!!
         # shape = tf.Variable([-1, 32, 32, 1], dtype=tf.int32)
         out_shape = tf.stack([tf.shape(layer2)[0], 32, 32, 1])
         # out_shape = tf.placeholder(tf.int32, [None, 32, 32, 1])
         print (layer1, layer2)
         with tf.name_scope("deconv_layer"):
-            deconv_weights = get_bi_weights([7, 7, 1, 1])
+            deconv_weights = get_bi_weights([7, 7, 1, 2])
             tf.summary.histogram("deconv_weights", deconv_weights)
             layer3 = tf.nn.conv2d_transpose(layer2, deconv_weights,
                                             out_shape,
                                             strides=[1, 1, 1, 1],
                                             name="transpose",
                                             padding='VALID')
-            self.y_out = tf.nn.relu(layer3)
+            # y_out = tf.nn.crelu(layer3)
+            y_out = layer3
+            return y_out
 
     def basic_unit(self, input_layer, i):
         with tf.variable_scope("basic_unit" + str(i)):
@@ -195,11 +194,14 @@ class CNN_deblender(object):
         if self.num_cnn_layers is not None:
             self.multi_layer_model()
         else:
-            self.simple_model3()
-        self.get_mean_loss()
-        tf.summary.scalar("loss", self.mean_loss)
+            self.y_out = self.simple_model3()
+        with tf.name_scope("mean_loss"):
+            self.mean_loss = tf.nn.l2_loss(self.y - self.y_out)
+            # self.mean_loss = tf.reduce_mean(total_loss,
+            #                                name='mean_loss')
+            tf.summary.scalar("mean_loss_summ", self.mean_loss)
         with tf.name_scope("train"):
-            self.optimizer = tf.train.AdamOptimizer(5e-4)
+            self.optimizer = tf.train.AdamOptimizer(4e-3)
             self.train_step = self.optimizer.minimize(self.mean_loss)
 
     def train(self, feed_dict):
@@ -240,7 +242,8 @@ class CNN_deblender(object):
         """Returns values of weights, biases and output images
         from interim activation layers.
         """
-        gr = tf.get_default_graph()
+        # gr = tf.get_default_graph()
+        gr = self.sess.graph
         layer_name = 'first_layer/conv1'
         self.get_kernel_bias(gr, layer_name)
         self.get_relu_activations(gr, layer_name)
@@ -297,7 +300,7 @@ class CNN_deblender(object):
                 if (iter_cnt % Args.print_every) == 0:
                     print("Iteration {0}: with minibatch training loss = {1}"
                           .format(iter_cnt, loss))
-                if (iter_cnt % 5) == 0:
+                if (iter_cnt % 1) == 0:
                     self.get_summary(feed_dict, i)
                 iter_cnt += 1
             # save training and test loss every epoch
