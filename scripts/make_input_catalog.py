@@ -2,6 +2,7 @@
 The central galaxy and second galaxy is picked at random form the OneDegSq.fits
 catsim catalog.
 
+Default settings
 Each pstamp is assumed to be centered at the central galaxy. Each pstamo is
 is 48 arcseconds or 240 pixels.
 Total field is made of --num of pstamps: 4 in a row
@@ -29,9 +30,9 @@ def get_galaxies(Args, catdir):
 
 
 def get_second_centers(Args, cat):
-    """Randomly select centers between 0.2 to  0. arcseconds"""
-    x0 = np.random.uniform(0.6, 1.2, size=Args.num)
-    y0 = np.random.uniform(0.6, 1.2, size=Args.num)
+    """Randomly select centers between 0.6 to  2.4 arcseconds"""
+    x0 = np.random.uniform(0.6, 2.4, size=Args.num)
+    y0 = np.random.uniform(0.6, 2.4, size=Args.num)
     mult_x = np.array([[1] * int(Args.num / 2) + [-1] * int(Args.num / 2)])[0]
     mult_y = np.array([[1] * int(Args.num / 2) + [-1] * int(Args.num / 2)])[0]
     np.random.shuffle(mult_x)
@@ -87,13 +88,13 @@ def main(Args):
 def add_args(parser):
     # from argparse import ArgumentParser
     # parser = ArgumentParser()
-    parser.add_argument('--num', default=16, type=int,
+    parser.add_argument('--num', default=4096, type=int,
                         help="# of distinct galaxy pairs [Default:16]")
     parser.add_argument('--seed', default=0, type=int,
                         help="Seed to randomly pick galaxies [Default:0]")
-    parser.add_argument('--num_columns', default=8, type=int,
+    parser.add_argument('--num_columns', default=512, type=int,
                         help="Number of columns in total field [Default:8]")
-    parser.add_argument('--stamp_size', default=240, type=int,
+    parser.add_argument('--stamp_size', default=150, type=int,
                         help="Size of each stamp in pixels [Default:240]")
 #    main(args)
 
