@@ -317,3 +317,7 @@ class CNN_deblender(object):
                      self.y: Y_test}
         pred = self.y_out.eval(session=self.sess, feed_dict=feed_dict)
         return train_loss, test_loss, pred
+
+    def restore(self, filename):
+        saver = tf.train.Saver(tf.global_variables())
+        saver.restore(self.sess, filename)
