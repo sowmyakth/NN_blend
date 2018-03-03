@@ -321,3 +321,10 @@ class CNN_deblender(object):
     def restore(self, filename):
         saver = tf.train.Saver(tf.global_variables())
         saver.restore(self.sess, filename)
+
+    def save(self):
+        fname = os.path.join(os.path.dirname(os.getcwd()),
+                             "models_", self.run_num)
+        saver = tf.train.Saver(tf.global_variables())
+        saver.save(self.sess, fname)
+        return
