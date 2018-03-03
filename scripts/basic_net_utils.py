@@ -56,21 +56,26 @@ def get_conv_layer(input_layer, kernel_shape, name, stride=2):
 
 class CNN_deblender(object):
     """Class to initialize and run CNN"""
-    def __init__(self, num_cnn_layers=None, summary_hpram=0):
+    def __init__(self, num_cnn_layers=None, run_num=0, bands=3):
         self.num_cnn_layers = num_cnn_layers
+        self.run_num = str(run_num)
+        self.bands = bands
         self.kernels = []
         self.biases = []
         self.activations = []
         tf.reset_default_graph()
         self.sess = tf.Session()
+        # config = tf.ConfigProto(inter_op_parallelism_threads=int(os.environ['NUM_INTER_THREADS']),
+        #                        intra_op_parallelism_threads=int(os.environ['NUM_INTRA_THREADS']))
+        # self.sess = tf.Session(config=config)
         self.build_net()
         self.merged = tf.summary.merge_all()
         self.sess.run(tf.global_variables_initializer())
-        self.initiate_writer(summary_hpram)
+        self.initiate_writer()
 
-    def initiate_writer(self, summary_hpram):
+    def initiate_writer(self):
         logdir = os.path.join(os.path.dirname(os.getcwd()),
-                              "logfiles", str(summary_hpram))
+                              "logfiles", self.run_num)
         self.writer = tf.summary.FileWriter(logdir)
         self.writer.add_graph(self.sess.graph)
 
@@ -119,7 +124,7 @@ class CNN_deblender(object):
         # weights for fully conected layer
         # define our graph (e.g. two_layer_convnet)
         with tf.name_scope("conv_layer1"):
-            a1 = get_conv_layer(self.X, [5, 5, 2, 32], "conv1", stride=1)
+            a1 = get_conv_layer(self.X, [5, 5, self.bands, 32], "conv1", stride=1)
             layer1 = tf.nn.crelu(a1)
         with tf.name_scope("conv_layer2"):
             a2 = get_conv_layer(layer1, [3, 3, 64, 1], "conv2", stride=1)
@@ -187,8 +192,10 @@ class CNN_deblender(object):
         layer 2 FC 32*32,1, 49
          """
         with tf.name_scope("input"):
-            self.X = tf.placeholder(tf.float32, [None, 32, 32, 2])
+            self.X = tf.placeholder(tf.float32, [None, 32, 32, self.bands])
             self.y = tf.placeholder(tf.float32, [None, 32, 32, 1])
+            tf.summary.image('X', self.X)
+            tf.summary.image('y', self.y)
         # Run the preferred CNN model here
         if self.num_cnn_layers is not None:
             self.multi_layer_model()
@@ -198,9 +205,9 @@ class CNN_deblender(object):
             self.mean_loss = tf.nn.l2_loss(self.y - self.y_out)
             # self.mean_loss = tf.reduce_mean(total_loss,
             #                                name='mean_loss')
-            tf.summary.scalar("mean_loss_summ", self.mean_loss)
+            tf.summary.scalar("train_loss_summ", self.mean_loss)
         with tf.name_scope("train"):
-            self.optimizer = tf.train.AdamOptimizer(4e-3)
+            self.optimizer = tf.train.AdamOptimizer(1e-3)
             self.train_step = self.optimizer.minimize(self.mean_loss)
 
     def train(self, feed_dict):
@@ -286,7 +293,7 @@ class CNN_deblender(object):
             # keep track of losses
             # make sure we iterate over the dataset once
             # fix this
-            for i in range(int(math.ceil(X_test.shape[0] / Args.batch_size))):
+            for i in range(int(math.ceil(X_train.shape[0] / Args.batch_size))):
                 # generate indicies for the batch
                 # Fix this
                 start_idx = (i * Args.batch_size) % X_train.shape[0]
@@ -299,7 +306,6 @@ class CNN_deblender(object):
                 if (iter_cnt % Args.print_every) == 0:
                     print("Iteration {0}: with minibatch training loss = {1}"
                           .format(iter_cnt, loss))
-                if (iter_cnt % 1) == 0:
                     self.get_summary(feed_dict, i)
                 iter_cnt += 1
             # save training and test loss every epoch
