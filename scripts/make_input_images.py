@@ -1,4 +1,4 @@
-"""Creatres input catalog which is then run via WLDeblending package
+"""Creates input catalog which is then run via WLDeblending package
 to produce galaxy images.
 Setting input option make_input_catalog to False implies the base catlog will
 not be created and the debelending package will run for the input options
@@ -12,7 +12,7 @@ import make_input_catalog
 import numpy as np
 import galsim
 import sys
-wldeb_path = "/global/homes/s/sowmyak/blending_tutorial/Blending_tutorial/WeakLensingDeblending"
+wldeb_path = "/global/homes/s/sowmyak/blending_tutorial/Blending_tutorial/WeakLensingDeblending/"
 sys.path.insert(0, wldeb_path)
 import descwl
 
@@ -38,8 +38,8 @@ def main():
     args.image_width = ncols * args.stamp_size
     run_wl_deb(args, 'gal_pair')
     run_wl_deb(args, 'central_gal')
-    add_noise(args, 'gal_pair')
-    add_noise(args, 'central_gal')
+    # add_noise(args, 'gal_pair')
+    # add_noise(args, 'central_gal')
 
 
 def second_args(parser):
@@ -71,7 +71,8 @@ def run_wl_deb(Args, cat_string):
     name = cat_string + "_" + Args.filter_band
     in_cat = os.path.join(parentdir, 'data',
                           cat_string + '_catalog.fits')
-    out_cat = os.path.join(parentdir, 'data',
+    out_dir = '/global/projecta/projectdirs/lsst/groups/WL/projects/wl-btf/two_gal_blend_data/'
+    out_cat = os.path.join(out_dir, 'training_data',
                            name + '_wldeb.fits')
     com = "python " + path + " --no-stamps"
     com += " --catalog-name " + in_cat
@@ -88,11 +89,12 @@ def run_wl_deb(Args, cat_string):
 
 def add_noise(Args, cat_string):
     """Adds noise to the wldeb output image"""
-    parentdir = os.path.abspath("..")
+    # parentdir = os.path.abspath("..")
+    out_dir = '/global/projecta/projectdirs/lsst/groups/WL/projects/wl-btf/two_gal_blend_data/'
     name = cat_string + "_" + Args.filter_band
-    in_cat = os.path.join(parentdir, 'data',
+    in_cat = os.path.join(out_dir, 'training_data',
                           name + '_wldeb.fits')
-    out_cat = os.path.join(parentdir, 'data',
+    out_cat = os.path.join(out_dir, 'training_data',
                            name + '_wldeb_noise.fits')
     # Read the image using descwl's package
     wldeb = descwl.output.Reader(in_cat).results
