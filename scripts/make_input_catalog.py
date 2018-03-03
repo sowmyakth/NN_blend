@@ -88,11 +88,11 @@ def main(Args):
 def add_args(parser):
     # from argparse import ArgumentParser
     # parser = ArgumentParser()
-    parser.add_argument('--num', default=4096, type=int,
+    parser.add_argument('--num', default=2048, type=int,
                         help="# of distinct galaxy pairs [Default:16]")
     parser.add_argument('--seed', default=0, type=int,
                         help="Seed to randomly pick galaxies [Default:0]")
-    parser.add_argument('--num_columns', default=512, type=int,
+    parser.add_argument('--num_columns', default=128, type=int,
                         help="Number of columns in total field [Default:8]")
     parser.add_argument('--stamp_size', default=150, type=int,
                         help="Size of each stamp in pixels [Default:240]")
