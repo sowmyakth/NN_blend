@@ -2,6 +2,7 @@
 pairs"""
 import os
 from astropy.io import fits
+from astropy.table import Table, Column
 import numpy as np
 
 
@@ -28,6 +29,17 @@ def load_images(filename, bands):
         image.T[i] = get_stamps(full_image, rows=16, cols=128,
                                 in_size=in_size, out_size=out_size)
     return image
+
+
+def get_blend_catalog(filename, band):
+    f = filename.replace("band", band)
+    cat = Table.read(f, hdu=1)
+    assert len(cat) % 2 == 0, "Catalog must contain only 2 galaxy blends"
+    cent = range(0, int(len(cat) / 2))
+    other = range(int(len(cat) / 2), len(cat))
+    assert len(cent) == len(other), 'Each central galaxy must have a blend'
+    blend_cat = cat[cent]
+    add_blend_param(cat, cent, other, blend_cat)
 
 
 def get_train_val_sets(X, Y, subtract_mean, split=0.1):
