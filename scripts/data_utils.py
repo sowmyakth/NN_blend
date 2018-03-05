@@ -51,6 +51,17 @@ def add_blend_param(cat, cent, other, blend_cat):
 
 
 def get_blend_catalog(filename, band):
+    """Creates catalog that saves central galaxy true parametrs + selected
+    parametrs of other galaxy
+
+    Args
+
+        filename    Name of input galaxy pair catalog
+        band        Name of filter to save blend parametrs of
+
+    Returns
+        blend_catalog   catalog with central galaxy and blend parameters
+    """
     f = filename.replace("band", band)
     cat = Table.read(f, hdu=1)
     assert len(cat) % 2 == 0, "Catalog must contain only 2 galaxy blends"
