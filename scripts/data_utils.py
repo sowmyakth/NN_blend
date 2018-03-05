@@ -55,10 +55,7 @@ def add_blend_param(cat, cent, other, blend_cat):
     blend_cat.add_column(col)
     col = Column(cat['sigma_m'][other], "sigma_neighbor")
     blend_cat.add_column(col)
-    col = Column(np.zeros(len(cat)), "is_validation")
-    blend_cat.add_column(col, dtype=int)
-    col = Column(np.zeros(len(cat)), "nn_id")
-    blend_cat.add_column(col, dtype=int)
+
 
 
 def get_blend_catalog(filename, band):
@@ -81,6 +78,28 @@ def get_blend_catalog(filename, band):
     assert len(cent) == len(other), 'Each central galaxy must have a blend'
     blend_cat = cat[cent]
     add_blend_param(cat, cent, other, blend_cat)
+
+
+def add_nn_id_blend_cat(blend_cat, validation, train):
+    """Saves index of galaxy that will be used in the CNN deblender,
+    separated into training and validation sets. If pair entry is to be used
+    for validation then catalog parameter 'is_validation' is set to 1. The
+    order in which galaxies will appear in the CNN training and validation set
+    is also saved.
+
+    Args
+
+        blend_cat  Catalog to save blend parametrs to.
+        validation    index of galaxies to be used in validation set.
+        train         index of galaxies to be used in training set.
+    """
+    col = Column(np.zeros(len(blend_cat)), "is_validation")
+    blend_cat.add_column(col, dtype=int)
+    col = Column(np.zeros(len(blend_cat)), "nn_id")
+    blend_cat.add_column(col, dtype=int)
+    blend_cat['is_validation'][validation] = 1
+    blend_cat['nn_id'][validation] = range(len(validation))
+    blend_cat['nn_id'][train] = range(len(train))
 
 
 def subtract_mean(X_train, Y_train, X_val, Y_val):
