@@ -32,6 +32,17 @@ def load_images(filename, bands):
 
 
 def add_blend_param(cat, cent, other, blend_cat):
+    """Computes distance between pair, magnitude, color, flux amd size of neighbor.
+    Also saves column indicating if galaxy pair will be used in validation  and
+    column to save id number.
+
+    Args
+
+        cat        Input galaxy pair catalog.
+        cent       Indices of central galaxy.
+        other      Indices of other galaxy.
+        blend_cat  Catalog to save blend parametrs to.
+    """
     dist = np.hypot(cat[cent]['dx'] - cat[other]['dx'],
                     cat[cent]['dy'] - cat[other]['dy'])
     col = Column(dist, "distance_neighbor")
