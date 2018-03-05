@@ -31,6 +31,25 @@ def load_images(filename, bands):
     return image
 
 
+def add_blend_param(cat, cent, other, blend_cat):
+    dist = np.hypot(cat[cent]['dx'] - cat[other]['dx'],
+                    cat[cent]['dy'] - cat[other]['dy'])
+    col = Column(dist, "distance_neighbor")
+    blend_cat.add_column(col)
+    col = Column(cat['ab_mag'][other], "mag_neighbor")
+    blend_cat.add_column(col)
+    col = Column(cat['ri_color'][other], "color_neighbor")
+    blend_cat.add_column(col)
+    col = Column(cat['flux'][other], "flux_neighbor")
+    blend_cat.add_column(col)
+    col = Column(cat['sigma_m'][other], "sigma_neighbor")
+    blend_cat.add_column(col)
+    col = Column(np.zeros(len(cat)), "is_validation")
+    blend_cat.add_column(col, dtype=int)
+    col = Column(np.zeros(len(cat)), "nn_id")
+    blend_cat.add_column(col, dtype=int)
+
+
 def get_blend_catalog(filename, band):
     f = filename.replace("band", band)
     cat = Table.read(f, hdu=1)
