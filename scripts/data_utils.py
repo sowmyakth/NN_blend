@@ -57,7 +57,6 @@ def add_blend_param(cat, cent, other, blend_cat):
     blend_cat.add_column(col)
 
 
-
 def get_blend_catalog(filename, band):
     """Creates catalog that saves central galaxy true parametrs + selected
     parametrs of other galaxy
