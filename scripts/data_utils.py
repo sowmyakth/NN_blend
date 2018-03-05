@@ -113,7 +113,8 @@ def subtract_mean(X_train, Y_train, X_val, Y_val):
     return X_train, Y_train, X_val, Y_val
 
 
-def get_train_val_sets(X, Y, subtract_mean, split=0.1):
+def get_train_val_sets(X, Y, blend_cat,
+                       subtract_mean, split=0.1):
     """Separates the dataset into training and validation set with splitting
     ratio split.ratio
     Also subtracts the mean of the training image if input"""
@@ -121,6 +122,7 @@ def get_train_val_sets(X, Y, subtract_mean, split=0.1):
     num = X.shape[0]
     validation = np.random.choice(num, int(num * split), replace=False)
     train = np.delete(range(num), validation)
+    add_nn_id_blend_cat(blend_cat, validation, train)
     Y_val = Y[validation]  # Y[:, :, :, 0][validation]
     X_val = X[validation]
     Y_train = Y[train]  # Y[:, :, :, 0][train]
@@ -139,6 +141,7 @@ def get_data(subtract_mean=False,
         gal_blend_data/training_data'
     filename = os.path.join(path, 'gal_pair_band_wldeb.fits')
     X = load_images(filename, bands)
+    blend_cat = get_blend_catalog(filename, 'i')
     filename = os.path.join(path, 'central_gal_band_wldeb.fits')
     Y = load_images(filename, ['i'])
     if normalize_stamps:
@@ -150,12 +153,16 @@ def get_data(subtract_mean=False,
                                        100, err_msg="Incorrectly normalized")
         assert np.all(Y.sum(axis=3).sum(axis=1).sum(axis=1) <= 100),\
             "Incorrectly normalized"
-    X_train, Y_train, X_val, Y_val = get_train_val_sets(X, Y, subtract_mean)
+    X_train, Y_train, X_val, Y_val = get_train_val_sets(X, Y,
+                                                        blend_cat,
+                                                        subtract_mean)
     if save_files is True:
         path = os.path.join(os.path.dirname(os.getcwd()), "data")
         filename = os.path.join(path, 'training_data')
         np.savez(filename, X_train=X_train,
                  Y_train=Y_train, X_val=X_val,
                  Y_val=Y_val)
+        filename = os.path.join(path, 'blend_param.tab')
+        blend_cat.write(filename, format='ascii')
         return
     return X_train, Y_train, X_val, Y_val
