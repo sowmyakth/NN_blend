@@ -83,6 +83,17 @@ def get_blend_catalog(filename, band):
     add_blend_param(cat, cent, other, blend_cat)
 
 
+def subtract_mean(X_train, Y_train, X_val, Y_val):
+    """Subtracts mean image"""
+    mean_image = np.mean(X_train, axis=0)
+    X_train -= mean_image
+    X_val -= mean_image
+    mean_image = np.mean(Y_train, axis=0)
+    Y_train -= mean_image
+    Y_val -= mean_image
+    return X_train, Y_train, X_val, Y_val
+
+
 def get_train_val_sets(X, Y, subtract_mean, split=0.1):
     """Separates the dataset into training and validation set with splitting
     ratio split.ratio
@@ -96,12 +107,8 @@ def get_train_val_sets(X, Y, subtract_mean, split=0.1):
     Y_train = Y[train]  # Y[:, :, :, 0][train]
     X_train = X[train]
     if subtract_mean:
-        mean_image = np.mean(X_train, axis=0)
-        X_train -= mean_image
-        X_val -= mean_image
-        mean_image = np.mean(Y_train, axis=0)
-        Y_train -= mean_image
-        Y_val -= mean_image
+        X_train, Y_train, X_val, Y_val = subtract_mean(X_train, Y_train,
+                                                       X_val, Y_val)
     return X_train, Y_train, X_val, Y_val
 
 
