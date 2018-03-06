@@ -58,7 +58,7 @@ class CNN_deblender(object):
     """Class to initialize and run CNN"""
     def __init__(self, num_cnn_layers=None, run_ident=0, bands=3):
         self.num_cnn_layers = num_cnn_layers
-        self.run_num = str(run_ident)
+        self.run_ident = str(run_ident)
         self.bands = bands
         self.kernels = []
         self.biases = []
