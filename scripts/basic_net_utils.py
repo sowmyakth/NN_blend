@@ -286,12 +286,14 @@ class CNN_deblender(object):
         # if we have a training function, add that to things we compute
         iter_cnt = 0
         train_loss, test_loss = [], []
+        num_mini_batches = int(math.ceil(X_train.shape[0] / Args.batch_size))
         for e in range(Args.epochs):
             # print("running epoch ", e)
             # keep track of losses
             # make sure we iterate over the dataset once
-            # fix this
-            for i in range(int(math.ceil(X_train.shape[0] / Args.batch_size))):
+            epoch_loss = []
+            assert len(epoch_loss) == 0, "Epoch loss must be empty"
+            for i in range(num_mini_batches):
                 # generate indicies for the batch
                 # Fix this
                 start_idx = (i * Args.batch_size) % X_train.shape[0]
@@ -306,8 +308,10 @@ class CNN_deblender(object):
                           .format(iter_cnt, loss))
                     self.get_summary(feed_dict, i)
                 iter_cnt += 1
+                epoch_loss.append(loss)
             # save training and test loss every epoch
-            train_loss.append(loss)
+            assert len(epoch_loss) == num_mini_batches, "Wrong size"
+            train_loss.append(np.mean(epoch_loss))
             if X_test is not None:
                 loss = self.test(X_test, Y_test)
                 test_loss.append(loss)
