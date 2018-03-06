@@ -110,7 +110,6 @@ class CNN_deblender(object):
         in_shape = tf.shape(layer1)
         out_shape = tf.stack([in_shape[0], 32, 32, 1])
         # out_shape = tf.placeholder(tf.int32, [None, 32, 32, 1])
-        print (deconv_weights, layer1)
         y_out = tf.nn.conv2d_transpose(layer1, deconv_weights,
                                        out_shape, strides=[1, 2, 2, 1],
                                        name="deconv", padding='VALID')
@@ -133,7 +132,6 @@ class CNN_deblender(object):
         # shape = tf.Variable([-1, 32, 32, 1], dtype=tf.int32)
         out_shape = tf.stack([tf.shape(layer2)[0], 32, 32, 1])
         # out_shape = tf.placeholder(tf.int32, [None, 32, 32, 1])
-        print (layer1, layer2)
         with tf.name_scope("deconv_layer"):
             deconv_weights = get_bi_weights([7, 7, 1, 2])
             tf.summary.histogram("deconv_weights", deconv_weights)
