@@ -56,9 +56,9 @@ def get_conv_layer(input_layer, kernel_shape, name, stride=2):
 
 class CNN_deblender(object):
     """Class to initialize and run CNN"""
-    def __init__(self, num_cnn_layers=None, run_num=0, bands=3):
+    def __init__(self, num_cnn_layers=None, run_ident=0, bands=3):
         self.num_cnn_layers = num_cnn_layers
-        self.run_num = str(run_num)
+        self.run_num = str(run_ident)
         self.bands = bands
         self.kernels = []
         self.biases = []
@@ -75,7 +75,7 @@ class CNN_deblender(object):
 
     def initiate_writer(self):
         logdir = os.path.join(os.path.dirname(os.getcwd()),
-                              "logfiles", self.run_num)
+                              "logfiles", self.run_ident)
         self.writer = tf.summary.FileWriter(logdir)
         self.writer.add_graph(self.sess.graph)
 
@@ -279,7 +279,7 @@ class CNN_deblender(object):
             self.get_interim_images()
         return loss
 
-    def run_model(self, X_train, Y_train,
+    def run_basic(self, X_train, Y_train,
                   Args, X_test=None, Y_test=None):
         # shuffle indicies
         train_indicies = np.arange(X_train.shape[0])
@@ -323,8 +323,8 @@ class CNN_deblender(object):
         saver.restore(self.sess, filename)
 
     def save(self):
-        fname = os.path.join(os.path.dirname(os.getcwd()),
-                             "models_", self.run_num)
+        fname = os.path.join(os.path.dirname(os.getcwd()), "outputs",
+                             "models", self.run_ident)
         saver = tf.train.Saver(tf.global_variables())
         saver.save(self.sess, fname)
         return
