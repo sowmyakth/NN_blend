@@ -18,10 +18,12 @@ def load_data(filename):
 
 
 def save_diff_blend(pred, Y_val):
-    path = os.path.join(os.path.dirname(os.getcwd()), "outputs")
+    path = os.path.join(os.path.dirname(os.getcwd()), "data")
     filename = os.path.join(path, 'diff')
-    diff = Y_val - pred
-    np.save(filename, diff)
+    diff = (Y_val - pred)
+    diff_val =np.sum(np.sum(diff[:,:,:,0], axis=1), axis=1)
+    np.save(filename, diff_val)
+    return diff_val
 
 
 def plot_preds(pred, X_val, Y_val):
@@ -51,7 +53,7 @@ def plot_preds(pred, X_val, Y_val):
 
 
 def main():
-    run_ident = 'test_3filter'
+    run_ident = 'test_3filter2'
     path = os.path.join(os.path.dirname(os.getcwd()), "data")
     filename = os.path.join(path, 'training_data.npz')
     X_train, Y_train, X_val, Y_val = load_data(filename)
