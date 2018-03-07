@@ -174,12 +174,12 @@ class CNN_deblender(object):
                                       "conv_last", stride=1)
             layer_out = tf.nn.relu(last_cnn)
         # Check this!!
-        deconv_weights = get_bi_weights([2, 2, 1, 1])
         # shape = tf.Variable([-1, 32, 32, 1], dtype=tf.int32)
-        in_shape = tf.shape(layer_out)
-        out_shape = tf.stack([in_shape[0], 32, 32, 1])
+        # in_shape = tf.shape(layer_out)
         # out_shape = tf.placeholder(tf.int32, [None, 32, 32, 1])
         with tf.name_scope("deconv_layer"):
+            deconv_weights = get_bi_weights([2, 2, 1, 1])
+            out_shape = tf.stack([tf.shape(self.X)[0], 32, 32, 1])
             self.y_out = tf.nn.conv2d_transpose(layer_out, deconv_weights,
                                                 out_shape,
                                                 strides=[1, 2, 2, 1])
