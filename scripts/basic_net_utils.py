@@ -200,7 +200,8 @@ class CNN_deblender(object):
         else:
             self.y_out = self.simple_model3()
         with tf.name_scope("mean_loss"):
-            self.mean_loss = tf.nn.l2_loss(self.y - self.y_out)
+            loss = tf.nn.l2_loss(self.y - self.y_out)
+            self.mean_loss = loss / tf.cast(tf.shape(self.X)[0], tf.float32)
             # self.mean_loss = tf.reduce_mean(total_loss,
             #                                name='mean_loss')
             tf.summary.scalar("train_loss_summ", self.mean_loss)
