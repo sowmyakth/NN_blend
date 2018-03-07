@@ -4,6 +4,7 @@ import os
 import basic_net_utils as utils
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
 
 
 def load_data(filename):
@@ -24,6 +25,15 @@ def save_diff_blend(pred, Y_val, ident):
     return diff_val
 
 
+def get_rgb(im):
+    min_val = [np.min(im[:, :, i]) for i in range(3)]
+    new_im = [np.sqrt(im[:, :, i] + min_val[i]) for i in range(3)]
+    norm = np.max(new_im)
+    new_im = [new_im[i].T / norm * 255 for i in range(3)]
+    new_im = np.array(new_im, dtype='u1')
+    return new_im.T
+
+
 def plot_loss(train_loss, val_loss, ident):
     path = os.path.join(os.path.dirname(os.getcwd()), "outputs")
     filename = os.path.join(path, ident + '_loss.png')
@@ -38,26 +48,24 @@ def plot_loss(train_loss, val_loss, ident):
 def plot_preds(pred, X_val, Y_val):
     for num in range(0, 10):
         plt.figure(figsize=[10, 6])
-        plt.subplot(5, 5, 1)
+        plt.subplot(4, 4, 1)
+        color_im = get_rgb(X_val[num, :, :, :])
+        plt.imshow(color_im,
+                   norm=LogNorm(vmin=0,
+                                vmax=np.max(color_im) - 10 * np.std(color_im)))
+        plt.title('Input blend (g, r, i)')
+        plt.subplot(4, 4, 3)
         plt.imshow(pred[num, :, :, 0])
         plt.colorbar()
         plt.title('Network output')
-        plt.subplot(5, 5, 2)
+        plt.subplot(4, 4, 2)
         plt.imshow(Y_val[num, :, :, 0])
         plt.colorbar()
-        plt.title('Training central galaxy (I band)')
-        plt.subplot(5, 5, 3)
-        plt.imshow(pred[num, :, :, 0] - Y_val[num, :, :, 0])
+        plt.title('Input central galaxy (i)')
+        plt.subplot(4, 4, 4)
+        plt.imshow(Y_val[num, :, :, 0] - pred[num, :, :, 0])
         plt.colorbar()
-        plt.title('Output - truth')
-        plt.subplot(5, 5, 4)
-        plt.imshow(X_val[num, :, :, 0])
-        plt.colorbar()
-        plt.title('Training galaxy blend (i band)')
-        plt.subplot(5, 5, 5)
-        plt.imshow(X_val[num, :, :, 0] - Y_val[num, :, :, 0])
-        plt.colorbar()
-        plt.title('truths diff')
+        plt.title('input - output')
         plt.show()
 
 
