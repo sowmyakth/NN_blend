@@ -56,10 +56,12 @@ def get_conv_layer(input_layer, kernel_shape, name, stride=2):
 
 class CNN_deblender(object):
     """Class to initialize and run CNN"""
-    def __init__(self, num_cnn_layers=None, run_ident=0, bands=3):
+    def __init__(self, num_cnn_layers=None, run_ident=0,
+                 bands=3, learning_rate=1e-3):
         self.num_cnn_layers = num_cnn_layers
         self.run_ident = str(run_ident)
         self.bands = bands
+        self.learning_rate = learning_rate
         self.kernels = []
         self.biases = []
         self.activations = []
@@ -206,7 +208,7 @@ class CNN_deblender(object):
             #                                name='mean_loss')
             tf.summary.scalar("train_loss_summ", self.mean_loss)
         with tf.name_scope("train"):
-            self.optimizer = tf.train.AdamOptimizer(1e-3)
+            self.optimizer = tf.train.AdamOptimizer(self.learning_rate)
             self.train_step = self.optimizer.minimize(self.mean_loss)
 
     def train(self, feed_dict):
