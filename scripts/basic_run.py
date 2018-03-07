@@ -1,8 +1,6 @@
 """ Basic Script to run CNN deblender"""
-
-
-import os
 from __future__ import division
+import os
 import basic_net_utils as utils
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,13 +15,24 @@ def load_data(filename):
     return X_train, Y_train, X_val, Y_val
 
 
-def save_diff_blend(pred, Y_val):
-    path = os.path.join(os.path.dirname(os.getcwd()), "data")
-    filename = os.path.join(path, 'diff')
+def save_diff_blend(pred, Y_val, ident):
+    path = os.path.join(os.path.dirname(os.getcwd()), "outputs")
+    filename = os.path.join(path, 'diff_' + ident)
     diff = (Y_val - pred)
-    diff_val =np.sum(np.sum(diff[:,:,:,0], axis=1), axis=1)
+    diff_val = np.sum(np.sum(diff[:, :, :, 0], axis=1), axis=1)
     np.save(filename, diff_val)
     return diff_val
+
+
+def plot_loss(train_loss, val_loss, ident):
+    path = os.path.join(os.path.dirname(os.getcwd()), "outputs")
+    filename = os.path.join(path, ident + '_loss.png')
+    plt.plot(train_loss, label='training')
+    plt.plot(val_loss, '.', label='validation', alpha=0.5)
+    plt.ylabel('mean loss')
+    plt.xlabel('epoch')
+    plt.legend()
+    plt.savefig(filename)
 
 
 def plot_preds(pred, X_val, Y_val):
@@ -53,7 +62,7 @@ def plot_preds(pred, X_val, Y_val):
 
 
 def main():
-    run_ident = 'test_3filter2'
+    run_ident = 'test_3filter'
     path = os.path.join(os.path.dirname(os.getcwd()), "data")
     filename = os.path.join(path, 'training_data.npz')
     X_train, Y_train, X_val, Y_val = load_data(filename)
@@ -63,13 +72,9 @@ def main():
                                                  run_params, X_val, Y_val)
     model.save()
     model.sess.close()
-    plt.plot(train_loss, label='training')
-    plt.plot(val_loss, '.', label='validation', alpha=0.5)
-    plt.ylabel('mean loss')
-    plt.xlabel('epoch')
-    plt.legend()
-    plt.show()
+    plot_loss(train_loss, val_loss, run_ident)
     plot_preds(pred, X_val, Y_val)
+    diff = save_diff_blend(pred, Y_val)
 
 
 if __name__ == "__main__":
