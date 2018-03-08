@@ -2,7 +2,7 @@
 to produce galaxy images.
 Setting input option make_input_catalog to False implies the base catlog will
 not be created and the debelending package will run for the input options
-and input catalogs as the already exosting gal_pair_catalog.fits and
+and input catalogs for an already existing gal_pair_catalog.fits and
 central_gal_catalog.fits.
 """
 import os
@@ -66,7 +66,6 @@ def run_wl_deb(Args, cat_string):
 
 def add_noise(Args, cat_string):
     """Adds noise to the wldeb output image"""
-    # parentdir = os.path.abspath("..")
     name = cat_string + "_" + Args.filter_band
     in_cat = os.path.join(out_dir, 'training_data',
                           name + '_wldeb.fits')
@@ -92,7 +91,6 @@ def main():
     args = parser.parse_args()
     if args.make_input_catalog is "True":
         make_input_catalog.main(args)
-    # import ipdb;ipdb.set_trace()
     num = args.num
     ncols = args.num_columns
     nrows = int(np.ceil(num / ncols))
