@@ -31,9 +31,9 @@ def second_args(parser):
     parser.add_argument('--filter-band', choices=['u', 'g', 'r', 'i', 'z',
                                                   'y'],
                         default='i', help='LSST imaging band to simulate')
-    parser.add_argument('--image-width', type=int, default=100,
+    parser.add_argument('--image-width', type=int,
                         help='Simulated mage width in pixels.')
-    parser.add_argument('--image-height', type=int, default=100,
+    parser.add_argument('--image-height', type=int,
                         help='Simulated image height in pixels.')
 
 
