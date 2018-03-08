@@ -15,7 +15,7 @@ def get_galaxies(Args, catdir):
 
     Keyword arguments:
         Args      -- Class describing catalog.
-        @Args.num    Number of galaxy blends in catalog.
+        @Args.num -- Number of galaxy blends in catalog.
         catdir    -- path to directory with catsim catalog.
 
     Returns
@@ -38,7 +38,7 @@ def get_second_centers(Args, cat):
     the central galaxy.
         Keyword arguments:
         Args      -- Class describing catalog.
-        @Args.num    Number of galaxy blends in catalog.
+        @Args.num -- Number of galaxy blends in catalog.
         cat       -- Combined catalog of central and secondary galaxies.
     """
     x0 = np.random.uniform(0.6, 2.4, size=Args.num)
@@ -56,7 +56,7 @@ def add_center_shift(Args, cat):
     both coordinates. The shift is same for central and secondary galaxies.
         Keyword arguments:
         Args      -- Class describing catalog.
-        @Args.num    Number of galaxy blends in catalog.
+        @Args.num -- Number of galaxy blends in catalog.
         cat       -- Combined catalog of central and secondary galaxies.
     """
     dx = np.random.uniform(-5, 5, size=int(Args.num / 2))
@@ -71,7 +71,7 @@ def get_center_of_field(Args):
     """Computes x and y coordinates of the center of the field
     Keyword arguments:
         Args              -- Class describing catalog.
-        @Args.num            Number of galaxy blends in catalog.
+        @Args.num         -- Number of galaxy blends in catalog.
         @Args.num_columns -- Number of columns in total field.
         @args.stamp_size  -- Size of each stamp in pixels.
     Returns
@@ -89,7 +89,7 @@ def get_central_centers(Args, cat):
     their neighboring central galaxy.
     Keyword arguments:
         Args              -- Class describing catalog.
-        @Args.num            Number of galaxy blends in catalog.
+        @Args.num         -- Number of galaxy blends in catalog.
         @Args.num_columns -- Number of columns in total field.
         @args.stamp_size  -- Size of each stamp in pixels.
     """
@@ -109,18 +109,18 @@ def get_central_centers(Args, cat):
 
 def main(Args):
     print ("Creating input catalog")
-    catdir = '/global/homes/s/sowmyak/blending'
+    catdir = '/global/homes/s/sowmyak/blending'  # path to catsim catalog
     np.random.seed(Args.seed)
-    catalog = get_galaxies(Args, catdir)
-    get_central_centers(Args, catalog)
-    add_center_shift(Args, catalog)
-    get_second_centers(Args, catalog)
+    catalog = get_galaxies(Args, catdir)  # make basic catalog of 2 gal blend
+    get_central_centers(Args, catalog)  # Assign center of blend in the grid
+    add_center_shift(Args, catalog)  # adds random shift to central galaxy
+    get_second_centers(Args, catalog)  # assign center of second galaxy
     parentdir = os.path.abspath("..")
     fname = os.path.join(parentdir, 'data',
-                         'gal_pair_catalog.fits')
+                         'gal_pair_catalog.fits')  # blend catalog
     catalog.write(fname, format='fits', overwrite=True)
     fname = os.path.join(parentdir, 'data',
-                         'central_gal_catalog.fits')
+                         'central_gal_catalog.fits')  # central galaxy catalog
     catalog[:Args.num].write(fname, format='fits', overwrite=True)
 
 
