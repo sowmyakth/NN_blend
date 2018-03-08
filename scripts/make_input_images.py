@@ -12,35 +12,12 @@ import make_input_catalog
 import numpy as np
 import galsim
 import sys
-wldeb_path = "/global/homes/s/sowmyak/blending_tutorial/Blending_tutorial/WeakLensingDeblending/"
+wldeb_path = "/global/homes/s/sowmyak/blending_tutorial/Blending_tutorial/\
+WeakLensingDeblending/"
 sys.path.insert(0, wldeb_path)
 import descwl
-out_dir = '/global/projecta/projectdirs/lsst/groups/WL/projects/wl-btf/two_gal_blend_data/'
-
-
-def main():
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--make_input_catalog', default="True",
-                        help="Run make_input_catalog.main() [Default:True]")
-    catalog_group = parser.add_argument_group('Catlog options',
-                                              'Input catalog options')
-    make_input_catalog.add_args(catalog_group)
-    wldeb_group = parser.add_argument_group('WLDEB package options',
-                                            'Input options to WLdeb package')
-    second_args(wldeb_group)
-    args = parser.parse_args()
-    if args.make_input_catalog is "True":
-        make_input_catalog.main(args)
-    # import ipdb;ipdb.set_trace()
-    num = args.num
-    ncols = args.num_columns
-    nrows = int(np.ceil(num / ncols))
-    args.image_height = nrows * args.stamp_size
-    args.image_width = ncols * args.stamp_size
-    run_wl_deb(args, 'gal_pair')
-    run_wl_deb(args, 'central_gal')
-    add_noise(args, 'gal_pair')
-    add_noise(args, 'central_gal')
+out_dir = '/global/projecta/projectdirs/lsst/groups/WL/projects/wl-btf/\
+two_gal_blend_data/'
 
 
 def second_args(parser):
@@ -99,6 +76,32 @@ def add_noise(Args, cat_string):
     wldeb = descwl.output.Reader(in_cat).results
     wldeb.add_noise(noise_seed=Args.seed)
     galsim.fits.write(wldeb.survey.image, out_cat)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--make_input_catalog', default="True",
+                        help="Run make_input_catalog.main() [Default:True]")
+    catalog_group = parser.add_argument_group('Catlog options',
+                                              'Input catalog options')
+    make_input_catalog.add_args(catalog_group)
+    wldeb_group = parser.add_argument_group('WLDEB package options',
+                                            'Input options to WLdeb package')
+    second_args(wldeb_group)
+    args = parser.parse_args()
+    if args.make_input_catalog is "True":
+        make_input_catalog.main(args)
+    # import ipdb;ipdb.set_trace()
+    num = args.num
+    ncols = args.num_columns
+    nrows = int(np.ceil(num / ncols))
+    args.image_height = nrows * args.stamp_size
+    args.image_width = ncols * args.stamp_size
+    run_wl_deb(args, 'gal_pair')
+    run_wl_deb(args, 'central_gal')
+    add_noise(args, 'gal_pair')
+    add_noise(args, 'central_gal')
 
 
 if __name__ == "__main__":
