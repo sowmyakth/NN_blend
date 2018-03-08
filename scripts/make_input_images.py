@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """Creates input catalog which is then run via WLDeblending package
 to produce galaxy images.
 Setting input option make_input_catalog to False implies the base catlog will
@@ -57,6 +58,7 @@ def run_wl_deb(Args, cat_string):
     for i, key in enumerate(keys):
         com += " --" + str(kys2[i]) + " "
         com += str(vars(Args)[key])
+    print("Running simulate.py")
     p = subprocess.call(com, shell=True, stdout=subprocess.PIPE)
     if p == 0:
         print ("Success!")
