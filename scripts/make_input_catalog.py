@@ -68,7 +68,15 @@ def add_center_shift(Args, cat):
 
 
 def get_center_of_field(Args):
-    """Computes x and y coordinates of the center of the field""" 
+    """Computes x and y coordinates of the center of the field
+    Keyword arguments:
+        Args              -- Class describing catalog.
+        @Args.num            Number of galaxy blends in catalog.
+        @Args.num_columns -- Number of columns in total field.
+        @args.stamp_size  -- Size of each stamp in pixels.
+    Returns
+        x and y coordu=inates of field center
+    """
     nrows = int(np.ceil(Args.num / Args.num_columns))
     x_cent = (Args.num_columns * Args.stamp_size - 1) / 2.
     y_cent = (nrows * Args.stamp_size - 1) / 2.
@@ -79,6 +87,11 @@ def get_central_centers(Args, cat):
     """Gets x and y coordinates of central galaxy.
     The centers of second galaxy are also assigned to the same value as
     their neighboring central galaxy.
+    Keyword arguments:
+        Args              -- Class describing catalog.
+        @Args.num            Number of galaxy blends in catalog.
+        @Args.num_columns -- Number of columns in total field.
+        @args.stamp_size  -- Size of each stamp in pixels.
     """
     num = Args.num
     ncols = Args.num_columns
@@ -112,8 +125,6 @@ def main(Args):
 
 
 def add_args(parser):
-    # from argparse import ArgumentParser
-    # parser = ArgumentParser()
     parser.add_argument('--num', default=2048, type=int,
                         help="# of distinct galaxy pairs [Default:16]")
     parser.add_argument('--seed', default=0, type=int,
