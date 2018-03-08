@@ -125,17 +125,15 @@ class CNN_deblender(object):
         # weights for fully conected layer
         # define our graph (e.g. two_layer_convnet)
         with tf.name_scope("conv_layer1"):
-            a1 = get_conv_layer(self.X, [5, 5, self.bands, 32], "conv1", stride=1)
+            a1 = get_conv_layer(self.X, [5, 5, self.bands, 32],
+                                name="conv1", stride=1)
             layer1 = tf.nn.crelu(a1)
         with tf.name_scope("conv_layer2"):
             a2 = get_conv_layer(layer1, [3, 3, 64, 1], "conv2", stride=1)
             layer2 = tf.nn.crelu(a2)
-        # Check this!!
-        # shape = tf.Variable([-1, 32, 32, 1], dtype=tf.int32)
-        out_shape = tf.stack([tf.shape(layer2)[0], 32, 32, 1])
-        # out_shape = tf.placeholder(tf.int32, [None, 32, 32, 1])
         with tf.name_scope("deconv_layer"):
             deconv_weights = get_bi_weights([7, 7, 1, 2])
+            out_shape = tf.stack([tf.shape(layer2)[0], 32, 32, 1])
             tf.summary.histogram("deconv_weights", deconv_weights)
             layer3 = tf.nn.conv2d_transpose(layer2, deconv_weights,
                                             out_shape,
@@ -201,11 +199,11 @@ class CNN_deblender(object):
             self.multi_layer_model()
         else:
             self.y_out = self.simple_model3()
-        with tf.name_scope("mean_loss"):
-            loss = tf.nn.l2_loss(self.y - self.y_out)
-            self.mean_loss = loss / tf.cast(tf.shape(self.X)[0], tf.float32)
-            # self.mean_loss = tf.reduce_mean(total_loss,
-            #                                name='mean_loss')
+        with tf.name_scope("loss_function"):
+            diff = tf.subtract(self.y, self.y_out, name='diff')
+            loss = tf.nn.l2_loss(diff, name='l2_loss')
+            num = tf.cast(tf.shape(self.y)[0], tf.float32, name="number")
+            self.mean_loss = tf.divide(loss, num, name="mean_loss")
             tf.summary.scalar("train_loss_summ", self.mean_loss)
         with tf.name_scope("train"):
             self.optimizer = tf.train.AdamOptimizer(self.learning_rate)
