@@ -1,13 +1,8 @@
 """Script creates pair of galaxies in the format of catsim galaxy catalog.
 The central galaxy and second galaxy is picked at random form the OneDegSq.fits
-catsim catalog.
-
-Default settings
-Each pstamp is assumed to be centered at the central galaxy. Each pstamo is
-is 48 arcseconds or 240 pixels.
-Total field is made of --num of pstamps: 4 in a row
-
-Ring test not included.
+catsim catalog. Each pstamp is assumed to be centered at the central galaxy,
+with a random shift in x and y direction. The secon dalaxy is loacated at a
+random distance between 0.6 - 2.4 arcseconds from the central galaxy.
 """
 import os
 import numpy as np
@@ -15,7 +10,16 @@ from astropy.table import Table, vstack
 
 
 def get_galaxies(Args, catdir):
-    """Randomly picks num_primary_gal * 2 galaxies, with certain conditions
+    """Randomly picks num_primary_gal * 2 galaxies, that satisfy certain
+    selection conditions.
+
+    Keyword arguments:
+        Args      -- Class describing catalog.
+        @Args.num    Number of galaxy blends in catalog.
+        catdir    -- path to directory with catsim catalog.
+
+    Returns
+        Combined catalog of central and secondary galaxies.
     """
     fname = os.path.join(catdir, 'data', 'wldeb_data',
                          'OneDegSq.fits')
@@ -30,26 +34,37 @@ def get_galaxies(Args, catdir):
 
 
 def get_second_centers(Args, cat):
-    """Randomly select centers between 0.6 to  2.4 arcseconds"""
+    """ Assigns a random x and y cordinate distance of the second galaxy from
+    the central galaxy.
+        Keyword arguments:
+        Args      -- Class describing catalog.
+        @Args.num    Number of galaxy blends in catalog.
+        cat       -- Combined catalog of central and secondary galaxies.
+    """
     x0 = np.random.uniform(0.6, 2.4, size=Args.num)
     y0 = np.random.uniform(0.6, 2.4, size=Args.num)
     mult_x = np.array([[1] * int(Args.num / 2) + [-1] * int(Args.num / 2)])[0]
     mult_y = np.array([[1] * int(Args.num / 2) + [-1] * int(Args.num / 2)])[0]
     np.random.shuffle(mult_x)
     np.random.shuffle(mult_y)
-    c = 1 / 3600.
-    cat['ra'][Args.num:] += x0 * mult_x * c
-    cat['dec'][Args.num:] += y0 * mult_y * c
+    cat['ra'][Args.num:] += x0 * mult_x / 3600.   # ra in degrees
+    cat['dec'][Args.num:] += y0 * mult_y / 3600.  # dec in degrees
 
 
 def add_center_shift(Args, cat):
-    """Shifts centre by a random value upto 5 pixels in
-    both coordinates.
+    """Shifts center of galaxies by a random value upto 5 pixels in
+    both coordinates. The shift is same for central and secondary galaxies.
+        Keyword arguments:
+        Args      -- Class describing catalog.
+        @Args.num    Number of galaxy blends in catalog.
+        cat       -- Combined catalog of central and secondary galaxies.
     """
-    dx = np.random.uniform(-5, 5, size=Args.num)
-    dy = np.random.uniform(-5, 5, size=Args.num)
-    cat['ra'] += dx * 0.2 / 3600.
-    cat['dec'] += dy * 0.2 / 3600.
+    dx = np.random.uniform(-5, 5, size=int(Args.num / 2))
+    dy = np.random.uniform(-5, 5, size=int(Args.num / 2))
+    dx = np.append(dx, dx)
+    dy = np.append(dy, dy)
+    cat['ra'] += dx * 0.2 / 3600.  # ra in degrees
+    cat['dec'] += dy * 0.2 / 3600.  # dec in degrees
 
 
 def get_center_of_field(Args):
@@ -107,8 +122,3 @@ def add_args(parser):
                         help="Number of columns in total field [Default:8]")
     parser.add_argument('--stamp_size', default=150, type=int,
                         help="Size of each stamp in pixels [Default:240]")
-#    main(args)
-
-
-# if __name__ == "__main__":
-#    add_args()
