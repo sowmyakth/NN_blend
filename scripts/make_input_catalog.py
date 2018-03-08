@@ -42,8 +42,18 @@ def get_second_centers(Args, cat):
     cat['dec'][Args.num:] += y0 * mult_y * c
 
 
+def add_center_shift(Args, cat):
+    """Shifts centre by a random value upto 5 pixels in
+    both coordinates.
+    """
+    dx = np.random.uniform(-5, 5, size=Args.num)
+    dy = np.random.uniform(-5, 5, size=Args.num)
+    cat['ra'] += dx * 0.2 / 3600.
+    cat['dec'] += dy * 0.2 / 3600.
+
+
 def get_center_of_field(Args):
-    """Returns cenetr pixel value"""
+    """Computes x and y coordinates of the center of the field""" 
     nrows = int(np.ceil(Args.num / Args.num_columns))
     x_cent = (Args.num_columns * Args.stamp_size - 1) / 2.
     y_cent = (nrows * Args.stamp_size - 1) / 2.
@@ -52,13 +62,13 @@ def get_center_of_field(Args):
 
 def get_central_centers(Args, cat):
     """Gets x and y coordinates of central galaxy.
-    The centers of second galaxy are also assigne dto the same value as
+    The centers of second galaxy are also assigned to the same value as
     their neighboring central galaxy.
     """
     num = Args.num
     ncols = Args.num_columns
     nrows = int(np.ceil(num / ncols))
-    c = 0.2 / 3600.  # conversion from pixels to arcseconds
+    c = 0.2 / 3600.  # conversion from pixels to degrees
     x_cent, y_cent = get_center_of_field(Args)
     xs = list(range(ncols)) * nrows
     xs = (np.array(xs)[list(range(num))]) * Args.stamp_size
@@ -75,6 +85,7 @@ def main(Args):
     np.random.seed(Args.seed)
     catalog = get_galaxies(Args, catdir)
     get_central_centers(Args, catalog)
+    add_center_shift(Args, catalog)
     get_second_centers(Args, catalog)
     parentdir = os.path.abspath("..")
     fname = os.path.join(parentdir, 'data',
