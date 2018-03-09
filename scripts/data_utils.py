@@ -33,13 +33,24 @@ def load_images(filename, bands):
 
 def normalize_images(X, Y):
     """Galaxy images are normalized such that the sum of flux of blended
-    images in all bands set to 100."""
+    images in all bands is 100.
+
+    Keyword Arguments
+        X -- array of blended galaxy postage stamps images.
+        Y -- array of isolated central galaxy postage stamp images.
+    Returns
+        X_norm -- normalized blended galaxy postage stamps images.
+        Y_norm -- normalized isolated galaxy postage stamps images.
+        sum_image -- summ of images in 3 bands; normalization value.
+    """
     sum_image = X.sum(axis=3).sum(axis=1).sum(axis=1)
     X_norm = (X.T / sum_image).T * 100
     # sum_image = Y.sum(axis=3).sum(axis=1).sum(axis=1)
     Y_norm = (Y.T / sum_image).T * 100
     np.testing.assert_almost_equal(X.sum(axis=3).sum(axis=1).sum(axis=1),
                                    100, err_msg="Incorrectly normalized")
+    assert np.all(Y.sum(axis=3).sum(axis=1).sum(axis=1) <= 100),\
+        "Incorrectly normalized"
     return X_norm, Y_norm, sum_image
 
 
@@ -149,17 +160,17 @@ def main():
     # path to image fits files
     in_path = '/global/projecta/projectdirs/lsst/groups/WL/projects/wl-btf/two_\
         gal_blend_data/training_data'
+    # load blended galaxy images
     filename = os.path.join(in_path, 'gal_pair_band_wldeb_noise.fits')
     X = load_images(filename, bands)
     blend_cat = get_blend_catalog(filename, 'i')
+    # load central galaxy images
     filename = os.path.join(in_path, 'central_gal_band_wldeb_noise.fits')
     Y = load_images(filename, ['i'])
     X_norm, Y_norm, sum_image = normalize_images(X, Y)
-    assert np.all(Y.sum(axis=3).sum(axis=1).sum(axis=1) <= 100),\
-        "Incorrectly normalized"
     X_train, Y_train, X_val, Y_val = get_train_val_sets(X, Y,
                                                         blend_cat,
-                                                        subtract_mean)
+                                                        subtract_mean=False)
     path = os.path.join(os.path.dirname(os.getcwd()), "data")
     filename = os.path.join(path, 'training_data')
     np.savez(filename, X_train=X_train,
