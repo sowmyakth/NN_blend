@@ -49,6 +49,54 @@ def load_images(filename, bands, Args):
     return image
 
 
+def add_blend_param(cat, cent, other, blend_cat):
+    """Computes distance between pair, magnitude, color, flux amd size of neighbor.
+    Also saves column indicating if galaxy pair will be used in validation  and
+    column to save id number.
+
+    Keyword Arguments
+
+        cat       --  Input galaxy pair catalog.
+        cent      --  Indices of central galaxy.
+        other     --  Indices of other galaxy.
+        blend_cat --  Catalog to save blend parametrs to.
+    """
+    dist = np.hypot(cat[cent]['dx'] - cat[other]['dx'],
+                    cat[cent]['dy'] - cat[other]['dy'])
+    col = Column(dist, "distance_neighbor")
+    blend_cat.add_column(col)
+    col = Column(cat['ab_mag'][other], "mag_neighbor")
+    blend_cat.add_column(col)
+    col = Column(cat['ri_color'][other], "color_neighbor")
+    blend_cat.add_column(col)
+    col = Column(cat['flux'][other], "flux_neighbor")
+    blend_cat.add_column(col)
+    col = Column(cat['sigma_m'][other], "sigma_neighbor")
+    blend_cat.add_column(col)
+
+
+def get_blend_catalog(filename, band):
+    """Creates catalog that saves central galaxy true parametrs + selected
+    parametrs of other galaxy
+
+    Keyword Arguments
+
+        filename -- Name of input galaxy pair catalog
+        band     -- Name of filter to save blend parametrs of
+
+    Returns
+        blend_catalog   catalog with central galaxy and blend parameters
+    """
+    f = filename.replace("band", band)
+    cat = Table.read(f, hdu=1)
+    assert len(cat) % 2 == 0, "Catalog must contain only 2 galaxy blends"
+    cent = range(0, int(len(cat) / 2))
+    other = range(int(len(cat) / 2), len(cat))
+    assert len(cent) == len(other), 'Each central galaxy must have a blend'
+    blend_cat = cat[cent]
+    add_blend_param(cat, cent, other, blend_cat)
+
+
 def normalize_images(X, Y):
     """Galaxy images are normalized such that the sum of flux of blended
     images in all bands is 100.
@@ -72,55 +120,8 @@ def normalize_images(X, Y):
     return X_norm, Y_norm, sum_image
 
 
-def add_blend_param(cat, cent, other, blend_cat):
-    """Computes distance between pair, magnitude, color, flux amd size of neighbor.
-    Also saves column indicating if galaxy pair will be used in validation  and
-    column to save id number.
-
-    Args
-
-        cat        Input galaxy pair catalog.
-        cent       Indices of central galaxy.
-        other      Indices of other galaxy.
-        blend_cat  Catalog to save blend parametrs to.
-    """
-    dist = np.hypot(cat[cent]['dx'] - cat[other]['dx'],
-                    cat[cent]['dy'] - cat[other]['dy'])
-    col = Column(dist, "distance_neighbor")
-    blend_cat.add_column(col)
-    col = Column(cat['ab_mag'][other], "mag_neighbor")
-    blend_cat.add_column(col)
-    col = Column(cat['ri_color'][other], "color_neighbor")
-    blend_cat.add_column(col)
-    col = Column(cat['flux'][other], "flux_neighbor")
-    blend_cat.add_column(col)
-    col = Column(cat['sigma_m'][other], "sigma_neighbor")
-    blend_cat.add_column(col)
-
-
-def get_blend_catalog(filename, band):
-    """Creates catalog that saves central galaxy true parametrs + selected
-    parametrs of other galaxy
-
-    Args
-
-        filename    Name of input galaxy pair catalog
-        band        Name of filter to save blend parametrs of
-
-    Returns
-        blend_catalog   catalog with central galaxy and blend parameters
-    """
-    f = filename.replace("band", band)
-    cat = Table.read(f, hdu=1)
-    assert len(cat) % 2 == 0, "Catalog must contain only 2 galaxy blends"
-    cent = range(0, int(len(cat) / 2))
-    other = range(int(len(cat) / 2), len(cat))
-    assert len(cent) == len(other), 'Each central galaxy must have a blend'
-    blend_cat = cat[cent]
-    add_blend_param(cat, cent, other, blend_cat)
-
-
-def add_nn_id_blend_cat(blend_cat, validation, train):
+def add_nn_id_blend_cat(blend_cat, sum_images,
+                        validation, train):
     """Saves index of galaxy that will be used in the CNN deblender,
     separated into training and validation sets. If pair entry is to be used
     for validation then catalog parameter 'is_validation' is set to 1. The
@@ -153,20 +154,20 @@ def subtract_mean(X_train, Y_train, X_val, Y_val):
     return X_train, Y_train, X_val, Y_val
 
 
-def get_train_val_sets(X, Y, blend_cat,
+def get_train_val_sets(X, Y, blend_cat, sum_images,
                        subtract_mean, split=0.1):
     """Separates the dataset into training and validation set with splitting
     ratio split.ratio
     Also subtracts the mean of the training image if input"""
-    np.random.seed(0)
+    X_norm, Y_norm, sum_images = normalize_images(X, Y)
     num = X.shape[0]
     validation = np.random.choice(num, int(num * split), replace=False)
     train = np.delete(range(num), validation)
-    add_nn_id_blend_cat(blend_cat, validation, train)
-    Y_val = Y[validation]
-    X_val = X[validation]
-    Y_train = Y[train]
-    X_train = X[train]
+    Y_val = Y_norm[validation]
+    X_val = X_norm[validation]
+    Y_train = Y_norm[train]
+    X_train = X_norm[train]
+    add_nn_id_blend_cat(blend_cat, sum_images, validation, train)
     if subtract_mean:
         X_train, Y_train, X_val, Y_val = subtract_mean(X_train, Y_train,
                                                        X_val, Y_val)
@@ -174,6 +175,7 @@ def get_train_val_sets(X, Y, blend_cat,
 
 
 def main(Args):
+    np.random.seed(0)
     bands = ['i', 'r', 'g']
     # path to image fits files
     in_path = '/global/projecta/projectdirs/lsst/groups/WL/projects/wl-btf/two_\
@@ -185,7 +187,6 @@ def main(Args):
     # load central galaxy images
     filename = os.path.join(in_path, 'central_gal_band_wldeb_noise.fits')
     Y = load_images(filename, ['i'], Args)
-    X_norm, Y_norm, sum_image = normalize_images(X, Y)
     X_train, Y_train, X_val, Y_val = get_train_val_sets(X, Y,
                                                         blend_cat,
                                                         subtract_mean=False)
