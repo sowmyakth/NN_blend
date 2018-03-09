@@ -91,8 +91,8 @@ def get_blend_catalog(Args):
     filename = os.path.join(in_path, 'gal_pair_i_wldeb.fits')
     cat = Table.read(filename, hdu=1)
     assert len(cat) % 2 == 0, "Catalog must contain only 2 galaxy blends"
-    cent = np.linspace(0, Args.num, Args.num, dtype=int)
-    other = np.linspace(Args.num, Args.num * 2, Args.num, dtype=int)
+    cent = np.linspace(0, Args.num, Args.num, dtype=int, endpoint=False)
+    other = np.linspace(Args.num, Args.num * 2, Args.num, dtype=int, endpoint=False)
     assert len(cent) == len(other), 'Each central galaxy must have a blend'
     blend_cat = cat[cent]
     add_blend_param(cat, cent, other, blend_cat)
@@ -115,9 +115,10 @@ def normalize_images(X, Y):
     X_norm = (X.T / sum_image).T * 100
     # sum_image = Y.sum(axis=3).sum(axis=1).sum(axis=1)
     Y_norm = (Y.T / sum_image).T * 100
-    np.testing.assert_almost_equal(X.sum(axis=3).sum(axis=1).sum(axis=1),
+    np.testing.assert_almost_equal(X_norm.sum(axis=3).sum(axis=1).sum(axis=1),
                                    100, err_msg="Incorrectly normalized")
-    assert np.all(Y.sum(axis=3).sum(axis=1).sum(axis=1) <= 100),\
+    import ipdb;ipdb.set_trace()
+    assert np.all(Y_norm.sum(axis=3).sum(axis=1).sum(axis=1) <= 100),\
         "Incorrectly normalized"
     return X_norm, Y_norm, sum_image
 
@@ -160,7 +161,7 @@ def subtract_mean(X_train, Y_train, X_val, Y_val):
     return X_train, Y_train, X_val, Y_val
 
 
-def get_train_val_sets(X, Y, blend_cat, sum_images,
+def get_train_val_sets(X, Y, blend_cat,
                        subtract_mean, split=0.1):
     """Separates the dataset into training and validation set with splitting
     ratio. Also subtracts the mean of the training image if input
@@ -194,7 +195,7 @@ def main(Args):
     # load blended galaxy images
     filename = os.path.join(in_path, 'gal_pair_band_wldeb_noise.fits')
     X = load_images(filename, bands, Args)
-    blend_cat = get_blend_catalog()
+    blend_cat = get_blend_catalog(Args)
     # load central galaxy images
     filename = os.path.join(in_path, 'central_gal_band_wldeb_noise.fits')
     Y = load_images(filename, ['i'], Args)
