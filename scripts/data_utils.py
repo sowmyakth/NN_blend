@@ -78,18 +78,25 @@ def add_blend_param(cat, cent, other, blend_cat):
     blend_cat.add_column(col)
 
 
-def get_blend_catalog():
+def get_blend_catalog(Args):
     """Creates catalog that saves central galaxy true parametrs + selected
     parametrs of other galaxy
+
+    Keyword Arguments
+        Args              -- Class describing input image.
+        @Args.num         -- Number of galaxy blends in catalog.
+    Returns
+        blend_cat --  Catalog to save blend parametrs to.
     """
     filename = os.path.join(in_path, 'gal_pair_i_wldeb.fits')
     cat = Table.read(filename, hdu=1)
     assert len(cat) % 2 == 0, "Catalog must contain only 2 galaxy blends"
-    cent = range(0, int(len(cat) / 2))
-    other = range(int(len(cat) / 2), len(cat))
+    cent = np.linspace(0, Args.num, Args.num, dtype=int)
+    other = np.linspace(Args.num, Args.num * 2, Args.num, dtype=int)
     assert len(cent) == len(other), 'Each central galaxy must have a blend'
     blend_cat = cat[cent]
     add_blend_param(cat, cent, other, blend_cat)
+    return blend_cat
 
 
 def normalize_images(X, Y):
