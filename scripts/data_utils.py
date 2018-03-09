@@ -6,28 +6,46 @@ from astropy.table import Table, Column
 import numpy as np
 
 
-def get_stamps(full_image, rows, cols, in_size, out_size):
-    num = rows * cols  # Total number of objects
-    low = int(in_size / 2 - out_size / 2)
-    high = int(in_size / 2 + out_size / 2)
-    image_rows = full_image.reshape(rows, in_size, full_image.shape[1])
-    stamps = [image_rows[j].T.reshape(cols, in_size, in_size) for j in range(len(image_rows))]
-    stamps = np.array(stamps).reshape(num, in_size, in_size)
+def get_stamps(full_image, Args, out_size):
+    """Gets individual stamps of size out_size.
+
+    Keyword Arguments
+        full_image        -- Full field image
+        Args              -- Class describing input image.
+        @Args.num         -- Number of galaxy blends in catalog.
+        @Args.num_columns -- Number of columns in total field.
+        @args.in_size     -- Size of each stamp in pixels.
+        out_size          -- Desired siz eof postage stamps in pixels.
+    Returns
+        array of individual postage stamps
+    """
+    nrows = int(np.ceil(Args.num / Args.num_columns))  # Total number of rows
+    low = int(Args.in_stamp_size / 2 - out_size / 2)
+    high = int(Args.in_stamp_size / 2 + out_size / 2)
+    image_rows = full_image.reshape(nrows, Args.in_size, full_image.shape[1])
+    stamps = [image_rows[j].T.reshape(Args.num_columns, Args.in_size, Args.in_size) for j in range(len(image_rows))]
+    stamps = np.array(stamps).reshape(Args.num, Args.in_size, Args.in_size)
     stamps = stamps[:, low:high, low:high]
     return stamps.T
 
 
 def load_images(filename, bands, Args):
-    """Returns individual postage stamp images of each blend in each band"""
-    in_size, out_size = 150, 32
-    num = 2048
-    image = np.zeros([num, out_size, out_size, len(bands)])
+    """Returns individual postage stamp images of each blend in each band
+
+    Keyword Arguments
+        filename  -- Name of file to load image
+        bands     -- differnt image filters
+        Args      -- Class describing input image.
+    Returns
+        array of individual postage stamps in all bands
+    """
+    out_size = 32
+    image = np.zeros([Args.num, out_size, out_size, len(bands)])
     for i, band in enumerate(bands):
         print ("Getting pstamps for band", band)
         full_image = fits.open(filename.replace("band", band))[0].data
         print (full_image.shape)
-        image.T[i] = get_stamps(full_image, rows=16, cols=128,
-                                in_size=in_size, out_size=out_size)
+        image.T[i] = get_stamps(full_image, Args, out_size=out_size)
     return image
 
 
@@ -187,7 +205,7 @@ if __name__ == "__main__":
                         help="# of distinct galaxy pairs [Default:16]")
     parser.add_argument('--num_columns', default=500, type=int,
                         help="Number of columns in total field [Default:8]")
-    parser.add_argument('--in_stamp_size', default=150, type=int,
+    parser.add_argument('--in_size', default=150, type=int,
                         help="Size of input stamps in pixels [Default:150]")
     args = parser.parse_args()
     main(args)
