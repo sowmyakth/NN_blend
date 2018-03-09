@@ -5,6 +5,10 @@ from astropy.io import fits
 from astropy.table import Table, Column
 import numpy as np
 
+# path to image fits files
+in_path = "/global/projecta/projectdirs/lsst/groups/WL/projects/wl-btf/two_\
+gal_blend_data/training_data"
+
 
 def get_stamps(full_image, Args, out_size):
     """Gets individual stamps of size out_size.
@@ -188,9 +192,6 @@ def get_train_val_sets(X, Y, blend_cat, sum_images,
 def main(Args):
     np.random.seed(0)
     bands = ['i', 'r', 'g']
-    # path to image fits files
-    in_path = '/global/projecta/projectdirs/lsst/groups/WL/projects/wl-btf/two_\
-    gal_blend_data/training_data'
     # load blended galaxy images
     filename = os.path.join(in_path, 'gal_pair_band_wldeb_noise.fits')
     X = load_images(filename, bands, Args)
