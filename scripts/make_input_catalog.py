@@ -36,7 +36,8 @@ def get_galaxies(Args, catdir):
 def get_second_centers(Args, cat):
     """ Assigns a random x and y cordinate distance of the second galaxy from
     the central galaxy.
-        Keyword arguments:
+
+    Keyword arguments:
         Args      -- Class describing catalog.
         @Args.num -- Number of galaxy blends in catalog.
         cat       -- Combined catalog of central and secondary galaxies.
@@ -54,7 +55,8 @@ def get_second_centers(Args, cat):
 def add_center_shift(Args, cat):
     """Shifts center of galaxies by a random value upto 5 pixels in
     both coordinates. The shift is same for central and secondary galaxies.
-        Keyword arguments:
+
+    Keyword arguments:
         Args      -- Class describing catalog.
         @Args.num -- Number of galaxy blends in catalog.
         cat       -- Combined catalog of central and secondary galaxies.
@@ -87,6 +89,7 @@ def get_central_centers(Args, cat):
     """Gets x and y coordinates of central galaxy.
     The centers of second galaxy are also assigned to the same value as
     their neighboring central galaxy.
+
     Keyword arguments:
         Args              -- Class describing catalog.
         @Args.num         -- Number of galaxy blends in catalog.
