@@ -80,7 +80,6 @@ def get_blend_catalog(filename, band):
     parametrs of other galaxy
 
     Keyword Arguments
-
         filename -- Name of input galaxy pair catalog
         band     -- Name of filter to save blend parametrs of
 
@@ -107,7 +106,7 @@ def normalize_images(X, Y):
     Returns
         X_norm -- normalized blended galaxy postage stamps images.
         Y_norm -- normalized isolated galaxy postage stamps images.
-        sum_image -- summ of images in 3 bands; normalization value.
+        sum_image -- sum of images in 3 bands; normalization value.
     """
     sum_image = X.sum(axis=3).sum(axis=1).sum(axis=1)
     X_norm = (X.T / sum_image).T * 100
@@ -128,19 +127,23 @@ def add_nn_id_blend_cat(blend_cat, sum_images,
     order in which galaxies will appear in the CNN training and validation set
     is also saved.
 
-    Args
-
-        blend_cat  Catalog to save blend parametrs to.
-        validation    index of galaxies to be used in validation set.
-        train         index of galaxies to be used in training set.
+    Keyword Arguments
+        blend_cat  -- Catalog to save blend parametrs to.
+        sum_images -- sum of images in 3 bands; normalization value.
+        validation -- index of galaxies to be used in validation set.
+        train      -- index of galaxies to be used in training set.
     """
     col = Column(np.zeros(len(blend_cat)), "is_validation")
     blend_cat.add_column(col, dtype=int)
     col = Column(np.zeros(len(blend_cat)), "nn_id")
     blend_cat.add_column(col, dtype=int)
+    col = Column(np.zeros(len(blend_cat)), "norm")
+    blend_cat.add_column(col, dtype=float)
     blend_cat['is_validation'][validation] = 1
     blend_cat['nn_id'][validation] = range(len(validation))
     blend_cat['nn_id'][train] = range(len(train))
+    # sum_image is flux per pair
+    blend_cat['norm'] = np.append(sum_images, sum_images)
 
 
 def subtract_mean(X_train, Y_train, X_val, Y_val):
@@ -157,8 +160,16 @@ def subtract_mean(X_train, Y_train, X_val, Y_val):
 def get_train_val_sets(X, Y, blend_cat, sum_images,
                        subtract_mean, split=0.1):
     """Separates the dataset into training and validation set with splitting
-    ratio split.ratio
-    Also subtracts the mean of the training image if input"""
+    ratio. Also subtracts the mean of the training image if input
+
+    Keyword Arguments
+        X          -- array of blended galaxy postage stamps images.
+        Y          -- array of isolated central galaxy postage stamp images.
+        blend_cat  -- Catalog to save blend parametrs to.
+        sum_images -- sum of images in 3 bands; normalization value.
+    Returns
+        Training and validation input and output
+    """
     X_norm, Y_norm, sum_images = normalize_images(X, Y)
     num = X.shape[0]
     validation = np.random.choice(num, int(num * split), replace=False)
