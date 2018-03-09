@@ -31,6 +31,18 @@ def load_images(filename, bands):
     return image
 
 
+def normalize_images(X, Y):
+    """Galaxy images are normalized such that the sum of flux of blended
+    images in all bands set to 100."""
+    sum_image = X.sum(axis=3).sum(axis=1).sum(axis=1)
+    X_norm = (X.T / sum_image).T * 100
+    # sum_image = Y.sum(axis=3).sum(axis=1).sum(axis=1)
+    Y_norm = (Y.T / sum_image).T * 100
+    np.testing.assert_almost_equal(X.sum(axis=3).sum(axis=1).sum(axis=1),
+                                   100, err_msg="Incorrectly normalized")
+    return X_norm, Y_norm, sum_image
+
+
 def add_blend_param(cat, cent, other, blend_cat):
     """Computes distance between pair, magnitude, color, flux amd size of neighbor.
     Also saves column indicating if galaxy pair will be used in validation  and
@@ -132,36 +144,30 @@ def get_train_val_sets(X, Y, blend_cat,
     return X_train, Y_train, X_val, Y_val
 
 
-def get_data(subtract_mean=False,
-             normalize_stamps=True, save_files=False):
+def main():
     bands = ['i', 'r', 'g']
-    # path = os.path.join(os.path.dirname(os.getcwd()), "data")
-    path = '/global/projecta/projectdirs/lsst/groups/WL/projects/wl-btf/two_\
+    # path to image fits files
+    in_path = '/global/projecta/projectdirs/lsst/groups/WL/projects/wl-btf/two_\
         gal_blend_data/training_data'
-    filename = os.path.join(path, 'gal_pair_band_wldeb_noise.fits')
+    filename = os.path.join(in_path, 'gal_pair_band_wldeb_noise.fits')
     X = load_images(filename, bands)
     blend_cat = get_blend_catalog(filename, 'i')
-    filename = os.path.join(path, 'central_gal_band_wldeb_noise.fits')
+    filename = os.path.join(in_path, 'central_gal_band_wldeb_noise.fits')
     Y = load_images(filename, ['i'])
-    if normalize_stamps:
-        sum_image = X.sum(axis=3).sum(axis=1).sum(axis=1)
-        X = (X.T / sum_image.T).T * 100
-        # sum_image = Y.sum(axis=3).sum(axis=1).sum(axis=1)
-        Y = (Y.T / sum_image.T).T * 100
-        np.testing.assert_almost_equal(X.sum(axis=3).sum(axis=1).sum(axis=1),
-                                       100, err_msg="Incorrectly normalized")
-        assert np.all(Y.sum(axis=3).sum(axis=1).sum(axis=1) <= 100),\
-            "Incorrectly normalized"
+    X_norm, Y_norm, sum_image = normalize_images(X, Y)
+    assert np.all(Y.sum(axis=3).sum(axis=1).sum(axis=1) <= 100),\
+        "Incorrectly normalized"
     X_train, Y_train, X_val, Y_val = get_train_val_sets(X, Y,
                                                         blend_cat,
                                                         subtract_mean)
-    if save_files is True:
-        path = os.path.join(os.path.dirname(os.getcwd()), "data")
-        filename = os.path.join(path, 'training_data')
-        np.savez(filename, X_train=X_train,
-                 Y_train=Y_train, X_val=X_val,
-                 Y_val=Y_val)
-        filename = os.path.join(path, 'blend_param.tab')
-        blend_cat.write(filename, format='ascii')
-        return
-    return X_train, Y_train, X_val, Y_val
+    path = os.path.join(os.path.dirname(os.getcwd()), "data")
+    filename = os.path.join(path, 'training_data')
+    np.savez(filename, X_train=X_train,
+             Y_train=Y_train, X_val=X_val,
+             Y_val=Y_val)
+    filename = os.path.join(path, 'blend_param.tab')
+    blend_cat.write(filename, format='ascii')
+
+
+if __name__ == "__main__":
+    main()
