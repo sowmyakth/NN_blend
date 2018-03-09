@@ -122,9 +122,9 @@ def get_train_val_sets(X, Y, blend_cat,
     validation = np.random.choice(num, int(num * split), replace=False)
     train = np.delete(range(num), validation)
     add_nn_id_blend_cat(blend_cat, validation, train)
-    Y_val = Y[validation]  # Y[:, :, :, 0][validation]
+    Y_val = Y[validation]
     X_val = X[validation]
-    Y_train = Y[train]  # Y[:, :, :, 0][train]
+    Y_train = Y[train]
     X_train = X[train]
     if subtract_mean:
         X_train, Y_train, X_val, Y_val = subtract_mean(X_train, Y_train,
@@ -138,10 +138,10 @@ def get_data(subtract_mean=False,
     # path = os.path.join(os.path.dirname(os.getcwd()), "data")
     path = '/global/projecta/projectdirs/lsst/groups/WL/projects/wl-btf/two_\
         gal_blend_data/training_data'
-    filename = os.path.join(path, 'gal_pair_band_wldeb.fits')
+    filename = os.path.join(path, 'gal_pair_band_wldeb_noise.fits')
     X = load_images(filename, bands)
     blend_cat = get_blend_catalog(filename, 'i')
-    filename = os.path.join(path, 'central_gal_band_wldeb.fits')
+    filename = os.path.join(path, 'central_gal_band_wldeb_noise.fits')
     Y = load_images(filename, ['i'])
     if normalize_stamps:
         sum_image = X.sum(axis=3).sum(axis=1).sum(axis=1)
