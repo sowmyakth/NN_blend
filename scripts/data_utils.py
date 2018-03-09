@@ -17,7 +17,7 @@ def get_stamps(full_image, rows, cols, in_size, out_size):
     return stamps.T
 
 
-def load_images(filename, bands):
+def load_images(filename, bands, Args):
     """Returns individual postage stamp images of each blend in each band"""
     in_size, out_size = 150, 32
     num = 2048
@@ -155,18 +155,18 @@ def get_train_val_sets(X, Y, blend_cat,
     return X_train, Y_train, X_val, Y_val
 
 
-def main():
+def main(Args):
     bands = ['i', 'r', 'g']
     # path to image fits files
     in_path = '/global/projecta/projectdirs/lsst/groups/WL/projects/wl-btf/two_\
         gal_blend_data/training_data'
     # load blended galaxy images
     filename = os.path.join(in_path, 'gal_pair_band_wldeb_noise.fits')
-    X = load_images(filename, bands)
+    X = load_images(filename, bands, Args)
     blend_cat = get_blend_catalog(filename, 'i')
     # load central galaxy images
     filename = os.path.join(in_path, 'central_gal_band_wldeb_noise.fits')
-    Y = load_images(filename, ['i'])
+    Y = load_images(filename, ['i'], Args)
     X_norm, Y_norm, sum_image = normalize_images(X, Y)
     X_train, Y_train, X_val, Y_val = get_train_val_sets(X, Y,
                                                         blend_cat,
@@ -181,4 +181,13 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--num', default=25000, type=int,
+                        help="# of distinct galaxy pairs [Default:16]")
+    parser.add_argument('--num_columns', default=500, type=int,
+                        help="Number of columns in total field [Default:8]")
+    parser.add_argument('--in_stamp_size', default=150, type=int,
+                        help="Size of input stamps in pixels [Default:150]")
+    args = parser.parse_args()
+    main(args)
