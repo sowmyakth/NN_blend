@@ -48,7 +48,6 @@ def load_images(filename, bands, Args):
     for i, band in enumerate(bands):
         print ("Getting pstamps for band", band)
         full_image = fits.open(filename.replace("band", band))[0].data
-        print (full_image.shape)
         image.T[i] = get_stamps(full_image, Args, out_size=out_size)
     return image
 
