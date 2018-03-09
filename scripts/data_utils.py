@@ -190,7 +190,7 @@ def main(Args):
     bands = ['i', 'r', 'g']
     # path to image fits files
     in_path = '/global/projecta/projectdirs/lsst/groups/WL/projects/wl-btf/two_\
-        gal_blend_data/training_data'
+    gal_blend_data/training_data'
     # load blended galaxy images
     filename = os.path.join(in_path, 'gal_pair_band_wldeb_noise.fits')
     X = load_images(filename, bands, Args)
