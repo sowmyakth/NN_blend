@@ -78,19 +78,12 @@ def add_blend_param(cat, cent, other, blend_cat):
     blend_cat.add_column(col)
 
 
-def get_blend_catalog(filename, band):
+def get_blend_catalog():
     """Creates catalog that saves central galaxy true parametrs + selected
     parametrs of other galaxy
-
-    Keyword Arguments
-        filename -- Name of input galaxy pair catalog
-        band     -- Name of filter to save blend parametrs of
-
-    Returns
-        blend_catalog   catalog with central galaxy and blend parameters
     """
-    f = filename.replace("band", band)
-    cat = Table.read(f, hdu=1)
+    filename = os.path.join(in_path, 'gal_pair_i_wldeb.fits')
+    cat = Table.read(filename, hdu=1)
     assert len(cat) % 2 == 0, "Catalog must contain only 2 galaxy blends"
     cent = range(0, int(len(cat) / 2))
     other = range(int(len(cat) / 2), len(cat))
@@ -194,7 +187,7 @@ def main(Args):
     # load blended galaxy images
     filename = os.path.join(in_path, 'gal_pair_band_wldeb_noise.fits')
     X = load_images(filename, bands, Args)
-    blend_cat = get_blend_catalog(filename, 'i')
+    blend_cat = get_blend_catalog()
     # load central galaxy images
     filename = os.path.join(in_path, 'central_gal_band_wldeb_noise.fits')
     Y = load_images(filename, ['i'], Args)
