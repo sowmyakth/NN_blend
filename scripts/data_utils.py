@@ -24,8 +24,8 @@ def get_stamps(full_image, Args, out_size):
         array of individual postage stamps
     """
     nrows = int(np.ceil(Args.num / Args.num_columns))  # Total number of rows
-    low = int(Args.in_stamp_size / 2 - out_size / 2)
-    high = int(Args.in_stamp_size / 2 + out_size / 2)
+    low = int(Args.in_size / 2 - out_size / 2)
+    high = int(Args.in_size / 2 + out_size / 2)
     image_rows = full_image.reshape(nrows, Args.in_size, full_image.shape[1])
     stamps = [image_rows[j].T.reshape(Args.num_columns, Args.in_size, Args.in_size) for j in range(len(image_rows))]
     stamps = np.array(stamps).reshape(Args.num, Args.in_size, Args.in_size)
