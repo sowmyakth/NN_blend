@@ -26,7 +26,7 @@ def get_galaxies(Args, catdir):
     cat = Table.read(fname, format='fits')
     a = np.hypot(cat['a_d'], cat['a_b'])
     cond = (a <= 1.2) & (a > 0.2)
-    q1, = np.where(cond & (cat['i_ab'] < 24))
+    q1, = np.where(cond & (cat['i_ab'] < 25.2))
     q2, = np.where(cond)
     select1 = q1[np.random.randint(0, len(q1), size=Args.num)]
     select2 = q2[np.random.randint(0, len(q2), size=Args.num)]
@@ -59,10 +59,10 @@ def add_center_shift(Args, cat):
         @Args.num -- Number of galaxy blends in catalog.
         cat       -- Combined catalog of central and secondary galaxies.
     """
-    dx = np.random.uniform(-5, 5, size=int(Args.num / 2))
-    dy = np.random.uniform(-5, 5, size=int(Args.num / 2))
-    dx = np.append(dx, dx)
-    dy = np.append(dy, dy)
+    dx1 = np.random.uniform(-5, 5, size=Args.num)
+    dy1 = np.random.uniform(-5, 5, size=Args.num)
+    dx = np.append(dx1, dx1)
+    dy = np.append(dy1, dy1)
     cat['ra'] += dx * 0.2 / 3600.  # ra in degrees
     cat['dec'] += dy * 0.2 / 3600.  # dec in degrees
 
@@ -125,11 +125,11 @@ def main(Args):
 
 
 def add_args(parser):
-    parser.add_argument('--num', default=2048, type=int,
+    parser.add_argument('--num', default=25000, type=int,
                         help="# of distinct galaxy pairs [Default:16]")
     parser.add_argument('--seed', default=0, type=int,
                         help="Seed to randomly pick galaxies [Default:0]")
-    parser.add_argument('--num_columns', default=128, type=int,
+    parser.add_argument('--num_columns', default=500, type=int,
                         help="Number of columns in total field [Default:8]")
     parser.add_argument('--stamp_size', default=150, type=int,
                         help="Size of each stamp in pixels [Default:240]")
