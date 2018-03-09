@@ -70,11 +70,12 @@ def plot_preds(pred, X_val, Y_val):
 
 
 def main():
-    run_ident = 'test_3filter'
+    learn_rate = 5e-4
+    run_ident = 'learn_rate_ ' + str(learn_rate)
     path = os.path.join(os.path.dirname(os.getcwd()), "data")
     filename = os.path.join(path, 'training_data.npz')
     X_train, Y_train, X_val, Y_val = load_data(filename)
-    model = utils.CNN_deblender(run_ident=run_ident)
+    model = utils.CNN_deblender(run_ident=run_ident, learning_rate=learn_rate)
     run_params = utils.Meas_args(epochs=100, batch_size=32)
     train_loss, val_loss, pred = model.run_basic(X_train, Y_train,
                                                  run_params, X_val, Y_val)
@@ -82,7 +83,6 @@ def main():
     model.sess.close()
     plot_loss(train_loss, val_loss, run_ident)
     plot_preds(pred, X_val, Y_val)
-    diff = save_diff_blend(pred, Y_val)
 
 
 if __name__ == "__main__":
