@@ -27,7 +27,7 @@ def get_galaxies(Args, catdir):
     a = np.hypot(cat['a_d'], cat['a_b'])
     cond = (a <= 1.2) & (a > 0.2)
     q1, = np.where(cond & (cat['i_ab'] < 24))
-    q2, = np.where(cond)
+    q2, = np.where(cond & (cat['i_ab'] < 25.2))
     select1 = q1[np.random.randint(0, len(q1), size=Args.num)]
     select2 = q2[np.random.randint(0, len(q2), size=Args.num)]
     return vstack([cat[select1], cat[select2]])
