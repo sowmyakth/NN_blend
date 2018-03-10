@@ -117,7 +117,6 @@ def normalize_images(X, Y):
     Y_norm = (Y.T / sum_image).T * 100
     np.testing.assert_almost_equal(X_norm.sum(axis=3).sum(axis=1).sum(axis=1),
                                    100, err_msg="Incorrectly normalized")
-    import ipdb;ipdb.set_trace()
     assert np.all(Y_norm.sum(axis=3).sum(axis=1).sum(axis=1) <= 100),\
         "Incorrectly normalized"
     return X_norm, Y_norm, sum_image
@@ -137,17 +136,16 @@ def add_nn_id_blend_cat(blend_cat, sum_images,
         validation -- index of galaxies to be used in validation set.
         train      -- index of galaxies to be used in training set.
     """
-    col = Column(np.zeros(len(blend_cat)), "is_validation")
-    blend_cat.add_column(col, dtype=int)
-    col = Column(np.zeros(len(blend_cat)), "nn_id")
-    blend_cat.add_column(col, dtype=int)
-    col = Column(np.zeros(len(blend_cat)), "norm")
-    blend_cat.add_column(col, dtype=float)
+    col = Column(np.zeros(len(blend_cat)), "is_validation", dtype=int)
+    blend_cat.add_column(col)
+    col = Column(np.zeros(len(blend_cat)), "nn_id", dtype=int)
+    blend_cat.add_column(col)
+    col = Column(np.zeros(len(blend_cat)), "norm", dtype=float)
+    blend_cat.add_column(col)
     blend_cat['is_validation'][validation] = 1
     blend_cat['nn_id'][validation] = range(len(validation))
     blend_cat['nn_id'][train] = range(len(train))
-    # sum_image is flux per pair
-    blend_cat['norm'] = np.append(sum_images, sum_images)
+    blend_cat['norm'] = sum_images
 
 
 def subtract_mean(X_train, Y_train, X_val, Y_val):
