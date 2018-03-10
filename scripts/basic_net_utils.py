@@ -283,8 +283,6 @@ class CNN_deblender(object):
         # shuffle indicies
         train_indicies = np.arange(X_train.shape[0])
         np.random.shuffle(train_indicies)
-        # setting up variables we want to compute (and optimizing)
-        # if we have a training function, add that to things we compute
         iter_cnt = 0
         train_loss, test_loss = [], []
         num_mini_batches = int(math.ceil(X_train.shape[0] / Args.batch_size))
