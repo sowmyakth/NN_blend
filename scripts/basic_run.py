@@ -69,14 +69,15 @@ def plot_preds(pred, X_val, Y_val):
         plt.show()
 
 
-def main():
-    learn_rate = 5e-4
-    run_ident = 'learn_rate_ ' + str(learn_rate)
+def main(Args):
+    run_ident = 'lr_ ' + str(Args.learn_rate)
     path = os.path.join(os.path.dirname(os.getcwd()), "data")
     filename = os.path.join(path, 'training_data.npz')
     X_train, Y_train, X_val, Y_val = load_data(filename)
-    model = utils.CNN_deblender(run_ident=run_ident, learning_rate=learn_rate)
-    run_params = utils.Meas_args(epochs=100, batch_size=32)
+    model = utils.CNN_deblender(run_ident=run_ident,
+                                learning_rate=Args.learn_rate)
+    run_params = utils.Meas_args(epochs=Args.epochs,
+                                 batch_size=Args.batch_size)
     train_loss, val_loss, pred = model.run_basic(X_train, Y_train,
                                                  run_params, X_val, Y_val)
     model.save()
@@ -86,4 +87,14 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--learn_rate', default=5e-4, type=float,
+                        help="Learning rate of net [Default:5e-4]")
+    parser.add_argument('--epochs', default=100, type=int,
+                        help="Number of times net trained on entire training\
+                        set [Default:100]")
+    parser.add_argument('--batch_size', default=32, type=int,
+                        help="Size of each mini batch [Default:32]")
+    args = parser.parse_args()
+    main(args)
