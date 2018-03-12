@@ -26,7 +26,7 @@ def get_galaxies(Args, catdir):
     cat = Table.read(fname, format='fits')
     a = np.hypot(cat['a_d'], cat['a_b'])
     cond = (a <= 1.2) & (a > 0.2)
-    q1, = np.where(cond & (cat['i_ab'] < 24))
+    q1, = np.where(cond & (cat['i_ab'] < 25.2))
     q2, = np.where(cond & (cat['i_ab'] < 25.2))
     select1 = q1[np.random.randint(0, len(q1), size=Args.num)]
     select2 = q2[np.random.randint(0, len(q2), size=Args.num)]
@@ -61,8 +61,8 @@ def add_center_shift(Args, cat):
         @Args.num -- Number of galaxy blends in catalog.
         cat       -- Combined catalog of central and secondary galaxies.
     """
-    dx1 = np.random.uniform(-5, 5, size=Args.num)
-    dy1 = np.random.uniform(-5, 5, size=Args.num)
+    dx1 = np.random.uniform(-3, 3, size=Args.num)
+    dy1 = np.random.uniform(-3, 3, size=Args.num)
     dx = np.append(dx1, dx1)
     dy = np.append(dy1, dy1)
     cat['ra'] += dx * 0.2 / 3600.  # ra in degrees

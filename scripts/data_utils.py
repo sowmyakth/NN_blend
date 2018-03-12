@@ -6,8 +6,9 @@ from astropy.table import Table, Column
 import numpy as np
 
 # path to image fits files
-in_path = "/global/projecta/projectdirs/lsst/groups/WL/projects/wl-btf/two_\
-gal_blend_data/training_data"
+out_dir = '/global/cscratch1/sd/sowmyak/'
+# in_path = "/global/projecta/projectdirs/lsst/groups/WL/projects/wl-btf/two_\
+# gal_blend_data/training_data"
 
 
 def get_stamps(full_image, Args, out_size):
@@ -88,7 +89,7 @@ def get_blend_catalog(Args):
     Returns
         blend_cat --  Catalog to save blend parametrs to.
     """
-    filename = os.path.join(in_path, 'gal_pair_i_wldeb.fits')
+    filename = os.path.join(out_dir, 'gal_pair_i_wldeb.fits')
     cat = Table.read(filename, hdu=1)
     assert len(cat) % 2 == 0, "Catalog must contain only 2 galaxy blends"
     cent = np.linspace(0, Args.num, Args.num, dtype=int, endpoint=False)
@@ -191,21 +192,20 @@ def main(Args):
     np.random.seed(0)
     bands = ['i', 'r', 'g']
     # load blended galaxy images
-    filename = os.path.join(in_path, 'gal_pair_band_wldeb_noise.fits')
+    filename = os.path.join(out_dir, 'gal_pair_band_wldeb_noise.fits')
     X = load_images(filename, bands, Args)
     blend_cat = get_blend_catalog(Args)
     # load central galaxy images
-    filename = os.path.join(in_path, 'central_gal_band_wldeb_noise.fits')
+    filename = os.path.join(out_dir, 'central_gal_band_wldeb_noise.fits')
     Y = load_images(filename, ['i'], Args)
     X_train, Y_train, X_val, Y_val = get_train_val_sets(X, Y,
                                                         blend_cat,
                                                         subtract_mean=False)
-    path = os.path.join(os.path.dirname(os.getcwd()), "data")
-    filename = os.path.join(path, 'training_data')
+    filename = os.path.join(out_dir, 'training_data')
     np.savez(filename, X_train=X_train,
              Y_train=Y_train, X_val=X_val,
              Y_val=Y_val)
-    filename = os.path.join(path, 'blend_param.tab')
+    filename = os.path.join(out_dir, 'blend_param.tab')
     blend_cat.write(filename, format='ascii', overwrite=True)
 
 

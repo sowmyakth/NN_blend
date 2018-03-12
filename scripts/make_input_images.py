@@ -17,8 +17,9 @@ wldeb_path = "/global/homes/s/sowmyak/blending_tutorial/Blending_tutorial/\
 WeakLensingDeblending/"
 sys.path.insert(0, wldeb_path)
 import descwl
-out_dir = '/global/projecta/projectdirs/lsst/groups/WL/projects/wl-btf/\
-two_gal_blend_data/'
+out_dir = '/global/cscratch1/sd/sowmyak/'
+# out_dir = '/global/projecta/projectdirs/lsst/groups/WL/projects/wl-btf/\
+# two_gal_blend_data/'
 
 
 def second_args(parser):
