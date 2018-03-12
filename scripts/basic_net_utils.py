@@ -97,26 +97,6 @@ class CNN_deblender(object):
         y_out = tf.transpose(y_out)
         self.y_out = tf.reshape(y_out, [-1, 32, 32]) + b1
 
-    def simple_model2(self):
-        """makes a simple 2 layer CNN
-        layer 1 Conv 5*5*2s2, 256/ReLU
-        layer 2 FC 32*32,1, 49s
-        """
-        # weights for fully conected layer
-        # define our graph (e.g. two_layer_convnet)
-        a1 = get_conv_layer(self.X, [2, 2, 2, 256], "conv1")
-        layer1 = tf.nn.relu(a1)
-        # Check this!!
-        deconv_weights = get_bi_weights([2, 2, 1, 256])
-        # shape = tf.Variable([-1, 32, 32, 1], dtype=tf.int32)
-        in_shape = tf.shape(layer1)
-        out_shape = tf.stack([in_shape[0], 32, 32, 1])
-        # out_shape = tf.placeholder(tf.int32, [None, 32, 32, 1])
-        y_out = tf.nn.conv2d_transpose(layer1, deconv_weights,
-                                       out_shape, strides=[1, 2, 2, 1],
-                                       name="deconv", padding='VALID')
-        return y_out
-
     def simple_model3(self):
         """makes a simple 2 layer CNN
         layer 1 Conv 5*5*2s2, 256/ReLU
@@ -142,6 +122,28 @@ class CNN_deblender(object):
                                             padding='VALID')
             # y_out = tf.nn.crelu(layer3)
             y_out = layer3
+            return y_out
+
+    def simple_model4(self):
+        with tf.name_scope("conv_layer1"):
+            a1 = get_conv_layer(self.X, [5, 5, self.bands, 32],
+                                name="conv1", stride=1)
+            layer = tf.nn.crelu(a1, name='crelu1')
+        for i in range(self.num_cnn_layers):
+            with tf.name_scope("conv_layer" + i):
+                a2 = get_conv_layer(layer, [3, 3, 64, 1], "conv2", stride=1)
+                layer = tf.nn.crelu(a2, name='crelu' + i)
+        with tf.name_scope("deconv_layer"):
+            deconv_weights = get_bi_weights([7, 7, 1, 2])
+            tf.summary.histogram("deconv_weights", deconv_weights)
+            out_shape = tf.stack([tf.shape(layer)[0], 32, 32, 1])
+            layer_out = tf.nn.conv2d_transpose(layer, deconv_weights,
+                                               out_shape,
+                                               strides=[1, 1, 1, 1],
+                                               name="transpose",
+                                               padding='VALID')
+            # y_out = tf.nn.crelu(layer3)
+            y_out = layer_out
             return y_out
 
     def basic_unit(self, input_layer, i):
