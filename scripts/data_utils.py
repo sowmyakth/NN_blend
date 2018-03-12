@@ -206,7 +206,7 @@ def main(Args):
              Y_train=Y_train, X_val=X_val,
              Y_val=Y_val)
     filename = os.path.join(path, 'blend_param.tab')
-    blend_cat.write(filename, format='ascii')
+    blend_cat.write(filename, format='ascii', overwrite=True)
 
 
 if __name__ == "__main__":
