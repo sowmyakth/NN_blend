@@ -67,9 +67,9 @@ class CNN_deblender(object):
         self.activations = []
         tf.reset_default_graph()
         self.sess = tf.Session()
-        # config = tf.ConfigProto(inter_op_parallelism_threads=int(os.environ['NUM_INTER_THREADS']),
-        #                        intra_op_parallelism_threads=int(os.environ['NUM_INTRA_THREADS']))
-        # self.sess = tf.Session(config=config)
+        config = tf.ConfigProto(inter_op_parallelism_threads=int(os.environ['NUM_INTER_THREADS']),
+                                intra_op_parallelism_threads=int(os.environ['NUM_INTRA_THREADS']))
+        self.sess = tf.Session(config=config)
         self.build_net()
         self.merged = tf.summary.merge_all()
         self.sess.run(tf.global_variables_initializer())
@@ -126,23 +126,25 @@ class CNN_deblender(object):
 
     def simple_model4(self):
         with tf.name_scope("conv_layer1"):
-            a1 = get_conv_layer(self.X, [5, 5, self.bands, 32],
+            num_filters = 4
+            a1 = get_conv_layer(self.X, [5, 5, self.bands, num_filters],
                                 name="conv1", stride=1)
             layer = tf.nn.crelu(a1, name='crelu1')
-        for i in range(self.num_cnn_layers):
+        for i in range(6):
+            num_filters *= 2
             with tf.name_scope("conv_layer" + i):
-                a2 = get_conv_layer(layer, [3, 3, 64, 1], "conv2", stride=1)
+                a2 = get_conv_layer(layer, [3, 3, num_filters, 1],
+                                    "conv2", stride=1)
                 layer = tf.nn.crelu(a2, name='crelu' + i)
         with tf.name_scope("deconv_layer"):
-            deconv_weights = get_bi_weights([7, 7, 1, 2])
+            deconv_weights = get_bi_weights([2, 2, 1, num_filters * 2])
             tf.summary.histogram("deconv_weights", deconv_weights)
             out_shape = tf.stack([tf.shape(layer)[0], 32, 32, 1])
             layer_out = tf.nn.conv2d_transpose(layer, deconv_weights,
                                                out_shape,
-                                               strides=[1, 1, 1, 1],
+                                               strides=[1, 2, 2, 1],
                                                name="transpose",
                                                padding='VALID')
-            # y_out = tf.nn.crelu(layer3)
             y_out = layer_out
             return y_out
 
