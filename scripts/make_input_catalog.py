@@ -6,7 +6,9 @@ random distance between 0.6 - 2.4 arcseconds from the central galaxy.
 """
 import os
 import numpy as np
-from astropy.table import Table, vstack
+from astropy.table import Table, vstack, Column
+import copy
+out_dir = '/global/cscratch1/sd/sowmyak/'
 
 
 def get_galaxies(Args, catdir):
@@ -33,6 +35,23 @@ def get_galaxies(Args, catdir):
     return vstack([cat[select1], cat[select2]])
 
 
+def check_center(Args, cat):
+    """Checks that the central galaxy is at the center.
+    If second galaxy is closer to center, swaps central
+    and second galaxy catlog entries.
+    """
+    col = Column(np.zeros(Args.num * 2), "is_swapped", dtype=int)
+    cat.add_column(col)
+    ds = np.hypot(cat['dx'], cat['dy'])
+    q, = np.where(ds[:Args.num] >= ds[Args.num:])
+    cat['is_swapped'][Args.num:][q] = 1
+    cat['is_swapped'][:Args.num][q] = 1
+    cat1_copy = copy.deepcopy(cat[:Args.num][q])
+    cat2_copy = copy.deepcopy(cat[Args.num:][q])
+    cat[:Args.num][q] = cat2_copy
+    cat[Args.num:][q] = cat1_copy
+
+
 def get_second_centers(Args, cat):
     """ Assigns a random x and y cordinate distance of the second galaxy from
     the central galaxy.
@@ -42,14 +61,19 @@ def get_second_centers(Args, cat):
         @Args.num -- Number of galaxy blends in catalog.
         cat       -- Combined catalog of central and secondary galaxies.
     """
-    x0 = np.random.uniform(0.6, 2.4, size=Args.num)
-    y0 = np.random.uniform(0.6, 2.4, size=Args.num)
-    mult_x = np.array([[1] * int(Args.num / 2) + [-1] * int(Args.num / 2)])[0]
-    mult_y = np.array([[1] * int(Args.num / 2) + [-1] * int(Args.num / 2)])[0]
-    np.random.shuffle(mult_x)
-    np.random.shuffle(mult_y)
-    cat['ra'][Args.num:] += x0 * mult_x / 3600.   # ra in degrees
-    cat['dec'][Args.num:] += y0 * mult_y / 3600.  # dec in degrees
+    dr = np.random.uniform(3, 10, size=Args.num)
+    theta = np.random.uniform(0, 360, size=Args.num) * np.pi / 180.
+    dx2 = dr * np.cos(theta)
+    dy2 = dr * np.sin(theta)
+    # mult_x = np.array([[1] * int(Args.num / 2) + [-1] * int(Args.num / 2)])[0]
+    # mult_y = np.array([[1] * int(Args.num / 2) + [-1] * int(Args.num / 2)])[0]
+    # np.random.shuffle(mult_x)
+    # np.random.shuffle(mult_y)
+    cat['dx'][Args.num:] += dx2  # x0 * mult_x
+    cat['dy'][Args.num:] += dy2  # y0 * mult_y
+    check_center(Args, cat)
+    cat['ra'] += cat['dx'] * 0.2 / 3600.   # ra in degrees
+    cat['dec'] += cat['dy'] * 0.2 / 3600.  # dec in degrees
 
 
 def add_center_shift(Args, cat):
@@ -65,8 +89,12 @@ def add_center_shift(Args, cat):
     dy1 = np.random.uniform(-3, 3, size=Args.num)
     dx = np.append(dx1, dx1)
     dy = np.append(dy1, dy1)
-    cat['ra'] += dx * 0.2 / 3600.  # ra in degrees
-    cat['dec'] += dy * 0.2 / 3600.  # dec in degrees
+    col = Column(dx, "dx")
+    cat.add_column(col)
+    col = Column(dy, "dy")
+    cat.add_column(col)
+    # cat['ra'] += dx * 0.2 / 3600.  # ra in degrees
+    # cat['dec'] += dy * 0.2 / 3600.  # dec in degrees
 
 
 def get_center_of_field(Args):
@@ -118,21 +146,20 @@ def main(Args):
     get_central_centers(Args, catalog)  # Assign center of blend in the grid
     add_center_shift(Args, catalog)  # adds random shift to central galaxy
     get_second_centers(Args, catalog)  # assign center of second galaxy
-    parentdir = os.path.abspath("..")
-    fname = os.path.join(parentdir, 'data',
+    fname = os.path.join(out_dir, 'training_data',
                          'gal_pair_catalog.fits')  # blend catalog
     catalog.write(fname, format='fits', overwrite=True)
-    fname = os.path.join(parentdir, 'data',
+    fname = os.path.join(out_dir, 'training_data',
                          'central_gal_catalog.fits')  # central galaxy catalog
     catalog[:Args.num].write(fname, format='fits', overwrite=True)
 
 
 def add_args(parser):
-    parser.add_argument('--num', default=25000, type=int,
-                        help="# of distinct galaxy pairs [Default:16]")
+    parser.add_argument('--num', default=49000, type=int,
+                        help="# of distinct galaxy pairs [Default:49000]")
     parser.add_argument('--seed', default=0, type=int,
                         help="Seed to randomly pick galaxies [Default:0]")
-    parser.add_argument('--num_columns', default=500, type=int,
-                        help="Number of columns in total field [Default:8]")
+    parser.add_argument('--num_columns', default=700, type=int,
+                        help="Number of columns in total field [Default:700]")
     parser.add_argument('--stamp_size', default=150, type=int,
-                        help="Size of each stamp in pixels [Default:240]")
+                        help="Size of each stamp in pixels [Default:150]")

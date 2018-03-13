@@ -47,9 +47,8 @@ def run_wl_deb(Args, cat_string):
             'cosmic_shear_g1', 'image_height']
     kys2 = ['exposure-time', 'cosmic-shear-g2', 'image-width', 'filter-band',
             'cosmic-shear-g1', 'image-height']
-    parentdir = os.path.abspath("..")
     name = cat_string + "_" + Args.filter_band
-    in_cat = os.path.join(parentdir, 'data',
+    in_cat = os.path.join(out_dir, 'training_data',
                           cat_string + '_catalog.fits')
     out_cat = os.path.join(out_dir, 'training_data',
                            name + '_wldeb.fits')
@@ -83,8 +82,10 @@ def add_noise(Args, cat_string):
 def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--make_input_catalog', default="True",
-                        help="Run make_input_catalog.main() [Default:True]")
+    parser.add_argument('--make_input_catalog', default="True", type=str,
+                        help="make input catalog [Default:True]")
+    parser.add_argument('--make_images', default="True", type=str,
+                        help="Make blend images [Default:True]")
     catalog_group = parser.add_argument_group('Catlog options',
                                               'Input catalog options')
     make_input_catalog.add_args(catalog_group)
@@ -92,8 +93,11 @@ def main():
                                             'Input options to WLdeb package')
     second_args(wldeb_group)
     args = parser.parse_args()
-    if args.make_input_catalog is "True":
+    if args.make_input_catalog == "True":
         make_input_catalog.main(args)
+    if args.make_images == "False":
+        print ("Exiting without creating images")
+        return
     num = args.num
     ncols = args.num_columns
     nrows = int(np.ceil(num / ncols))
