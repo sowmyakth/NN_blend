@@ -161,5 +161,5 @@ def add_args(parser):
                         help="Seed to randomly pick galaxies [Default:0]")
     parser.add_argument('--num_columns', default=700, type=int,
                         help="Number of columns in total field [Default:700]")
-    parser.add_argument('--stamp_size', default=150, type=int,
-                        help="Size of each stamp in pixels [Default:150]")
+    parser.add_argument('--stamp_size', default=80, type=int,
+                        help="Size of each stamp in pixels [Default:80]")
