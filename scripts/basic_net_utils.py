@@ -21,6 +21,13 @@ class Meas_args(object):
         self.print_every = print_every
 
 
+def make_layer(layer, index, num_filters):
+    a2 = get_conv_layer(layer, [3, 3, num_filters, num_filters],
+                        "conv", stride=1)
+    layer = tf.nn.crelu(a2, name='crelu')
+    return layer
+
+
 def get_bi_weights(kernel_shape, name='weights'):
     """compute intialization weights here"""
     # Add computation here
@@ -141,7 +148,8 @@ class CNN_deblender(object):
             layer = tf.nn.crelu(a1, name='crelu1')
         for i in range(6):
             num_filters *= 2
-            
+            with tf.name_scope("conv_layer" + str(i)):
+                layer = make_layer(layer, num_filters)
         with tf.name_scope("deconv_layer"):
             deconv_weights = get_bi_weights([2, 2, 1, num_filters * 2])
             tf.summary.histogram("deconv_weights", deconv_weights)
