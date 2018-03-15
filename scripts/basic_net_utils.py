@@ -57,7 +57,7 @@ def get_conv_layer(input_layer, kernel_shape, name, stride=2):
 class CNN_deblender(object):
     """Class to initialize and run CNN"""
     def __init__(self, num_cnn_layers=None, run_ident=0,
-                 bands=3, learning_rate=1e-3):
+                 bands=3, learning_rate=1e-3, config=True):
         self.num_cnn_layers = num_cnn_layers
         self.run_ident = str(run_ident)
         self.bands = bands
@@ -66,10 +66,12 @@ class CNN_deblender(object):
         self.biases = []
         self.activations = []
         tf.reset_default_graph()
-        self.sess = tf.Session()
-        config = tf.ConfigProto(inter_op_parallelism_threads=int(os.environ['NUM_INTER_THREADS']),
-                                intra_op_parallelism_threads=int(os.environ['NUM_INTRA_THREADS']))
-        self.sess = tf.Session(config=config)
+        if config is True:
+            config = tf.ConfigProto(inter_op_parallelism_threads=int(os.environ['NUM_INTER_THREADS']),
+                                    intra_op_parallelism_threads=int(os.environ['NUM_INTRA_THREADS']))
+            self.sess = tf.Session(config=config)
+        else:
+            self.sess = tf.Session()
         self.build_net()
         self.merged = tf.summary.merge_all()
         self.sess.run(tf.global_variables_initializer())
@@ -125,17 +127,19 @@ class CNN_deblender(object):
             return y_out
 
     def simple_model4(self):
-        with tf.name_scope("conv_layer1"):
+        print ("Initializing simple model4")
+        with tf.name_scope("conv_layer_in"):
             num_filters = 4
             a1 = get_conv_layer(self.X, [5, 5, self.bands, num_filters],
-                                name="conv1", stride=1)
+                                name="conv", stride=1)
             layer = tf.nn.crelu(a1, name='crelu1')
         for i in range(6):
             num_filters *= 2
-            with tf.name_scope("conv_layer" + i):
-                a2 = get_conv_layer(layer, [3, 3, num_filters, 1],
-                                    "conv2", stride=1)
-                layer = tf.nn.crelu(a2, name='crelu' + i)
+            with tf.name_scope("conv_layer" + str(i)):
+                print (layer)
+                a2 = get_conv_layer(layer, [3, 3, num_filters, num_filters],
+                                    "conv", stride=1)
+                layer = tf.nn.crelu(a2, name='crelu' + str(i))
         with tf.name_scope("deconv_layer"):
             deconv_weights = get_bi_weights([2, 2, 1, num_filters * 2])
             tf.summary.histogram("deconv_weights", deconv_weights)
@@ -200,7 +204,8 @@ class CNN_deblender(object):
             tf.summary.image('y', self.y)
         # Run the preferred CNN model here
         if self.num_cnn_layers is not None:
-            self.multi_layer_model()
+            # self.multi_layer_model()
+            self.y_out = self.simple_model4()
         else:
             self.y_out = self.simple_model3()
         with tf.name_scope("loss_function"):
