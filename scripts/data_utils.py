@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """Script creates training and validation data for deblending two-galaxy
 pairs"""
 import os
@@ -6,7 +7,7 @@ from astropy.table import Table, Column
 import numpy as np
 
 # path to image fits files
-out_dir = '/global/cscratch1/sd/sowmyak/'
+out_dir = '/global/cscratch1/sd/sowmyak/training_data'
 # in_path = "/global/projecta/projectdirs/lsst/groups/WL/projects/wl-btf/two_\
 # gal_blend_data/training_data"
 
@@ -24,14 +25,23 @@ def get_stamps(full_image, Args, out_size):
     Returns
         array of individual postage stamps
     """
+    print ("getting individual stamps")
     nrows = int(np.ceil(Args.num / Args.num_columns))  # Total number of rows
     low = int(Args.in_size / 2 - out_size / 2)
     high = int(Args.in_size / 2 + out_size / 2)
-    image_rows = full_image.reshape(nrows, Args.in_size, full_image.shape[1])
-    stamps = [image_rows[j].T.reshape(Args.num_columns, Args.in_size, Args.in_size) for j in range(len(image_rows))]
-    stamps = np.array(stamps).reshape(Args.num, Args.in_size, Args.in_size)
-    stamps = stamps[:, low:high, low:high]
-    return stamps.T
+    # image_rows = full_image.reshape(nrows, Args.in_size, full_image.shape[1])
+    # image_rows = np.vstack(np.hsplit(full_image, Args.num_columns))
+    # print ("Number of rows", len(image_rows))
+    # stamps = [image_rows[j].T.reshape(Args.num_columns, Args.in_size, Args.in_size) for j in range(len(image_rows))]
+    # stamps = np.array(stamps).reshape(Args.num, Args.in_size, Args.in_size)
+    # stamps = image_rows.reshape(Args.num, Args.in_size, Args.in_size)
+    nStamp = (70, 700)
+    stampSize = 80
+    s2 = np.hstack(np.split(full_image,nStamp[0])).T.reshape(nStamp[0]*nStamp[1], stampSize, stampSize)
+    # stamps = stamps[:, low:high, low:high]
+    stamps = s2[:, low:high, low:high]
+    print ("Number of rows", stamps.shape)
+    return stamps
 
 
 def load_images(filename, bands, Args):
@@ -49,7 +59,7 @@ def load_images(filename, bands, Args):
     for i, band in enumerate(bands):
         print ("Getting pstamps for band", band)
         full_image = fits.open(filename.replace("band", band))[0].data
-        image.T[i] = get_stamps(full_image, Args, out_size=out_size)
+        image[:, :, :, i] = get_stamps(full_image, Args, out_size=out_size)
     return image
 
 
@@ -192,31 +202,35 @@ def main(Args):
     np.random.seed(0)
     bands = ['i', 'r', 'g']
     # load blended galaxy images
-    filename = os.path.join(out_dir, 'gal_pair_band_wldeb_noise.fits')
+    filename = os.path.join(out_dir,
+                            'gal_pair_band_wldeb_noise.fits')
     X = load_images(filename, bands, Args)
     blend_cat = get_blend_catalog(Args)
     # load central galaxy images
-    filename = os.path.join(out_dir, 'central_gal_band_wldeb_noise.fits')
+    filename = os.path.join(out_dir,
+                            'central_gal_band_wldeb_noise.fits')
     Y = load_images(filename, ['i'], Args)
     X_train, Y_train, X_val, Y_val = get_train_val_sets(X, Y,
                                                         blend_cat,
                                                         subtract_mean=False)
-    filename = os.path.join(out_dir, 'training_data')
+    filename = os.path.join(out_dir,
+                            'stamps')
     np.savez(filename, X_train=X_train,
              Y_train=Y_train, X_val=X_val,
              Y_val=Y_val)
-    filename = os.path.join(out_dir, 'blend_param.tab')
+    filename = os.path.join(out_dir,
+                            'blend_param.tab')
     blend_cat.write(filename, format='ascii', overwrite=True)
 
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--num', default=25000, type=int,
-                        help="# of distinct galaxy pairs [Default:16]")
-    parser.add_argument('--num_columns', default=500, type=int,
-                        help="Number of columns in total field [Default:8]")
-    parser.add_argument('--in_size', default=150, type=int,
-                        help="Size of input stamps in pixels [Default:150]")
+    parser.add_argument('--num', default=49000, type=int,
+                        help="# of distinct galaxy pairs [Default:49000")
+    parser.add_argument('--num_columns', default=700, type=int,
+                        help="Number of columns in total field [Default:700]")
+    parser.add_argument('--in_size', default=80, type=int,
+                        help="Size of input stamps in pixels [Default:80]")
     args = parser.parse_args()
     main(args)
