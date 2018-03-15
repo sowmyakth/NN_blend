@@ -34,6 +34,12 @@ def get_bi_weights(kernel_shape, name='weights'):
     return bi_weights
 
 
+def get_individual_loss(y, y_out):
+    diff = np.subtract(y, y_out)
+    loss = np.sum(diff**2) / 2.
+    return loss
+
+
 def get_conv_layer(input_layer, kernel_shape, name, stride=2):
     """Returns conv2d layer.
     Defines weight functions W, a tensor of shape kernel size
@@ -135,11 +141,7 @@ class CNN_deblender(object):
             layer = tf.nn.crelu(a1, name='crelu1')
         for i in range(6):
             num_filters *= 2
-            with tf.name_scope("conv_layer" + str(i)):
-                print (layer)
-                a2 = get_conv_layer(layer, [3, 3, num_filters, num_filters],
-                                    "conv", stride=1)
-                layer = tf.nn.crelu(a2, name='crelu' + str(i))
+            
         with tf.name_scope("deconv_layer"):
             deconv_weights = get_bi_weights([2, 2, 1, num_filters * 2])
             tf.summary.histogram("deconv_weights", deconv_weights)
@@ -326,7 +328,8 @@ class CNN_deblender(object):
         feed_dict = {self.X: X_test,
                      self.y: Y_test}
         pred = self.y_out.eval(session=self.sess, feed_dict=feed_dict)
-        return train_loss, test_loss, pred
+        ind_loss = get_individual_loss(Y_test, pred)
+        return train_loss, test_loss, pred, ind_loss
 
     def restore(self, filename):
         saver = tf.train.Saver(tf.global_variables())
