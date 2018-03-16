@@ -45,45 +45,51 @@ def plot_loss(train_loss, val_loss, ident):
     plt.savefig(filename)
 
 
-def plot_preds(pred, X_val, Y_val):
-    for num in range(0, 10):
+def plot_preds(pred, X_val, Y_val, val_loss):
+    for num in range(0, 30):
         plt.figure(figsize=[10, 6])
-        plt.subplot(4, 4, 1)
+        plt.subplot(5, 5, 1)
         color_im = get_rgb(X_val[num, :, :, :])
-        plt.imshow(color_im,
-                   norm=LogNorm(vmin=0,
-                                vmax=np.max(color_im) - 10 * np.std(color_im)))
+        plt.imshow(color_im, norm=LogNorm(vmin=0,
+                                          vmax=np.max(color_im) - 3 * np.std(color_im)))
         plt.title('Input blend (g, r, i)')
-        plt.subplot(4, 4, 3)
+        plt.subplot(5, 5, 2)
+        plt.imshow(X_val[num, :, :, 0])
+        plt.colorbar()
+        plt.title('Input blend (i)')
+        plt.subplot(5, 5, 3)
+        plt.imshow(Y_val[num, :, :, 0])
+        plt.title('Truth central galaxy (i)')
+        plt.colorbar()
+        plt.subplot(5, 5, 4)
         plt.imshow(pred[num, :, :, 0])
         plt.colorbar()
         plt.title('Network output')
-        plt.subplot(4, 4, 2)
-        plt.imshow(Y_val[num, :, :, 0])
-        plt.colorbar()
-        plt.title('Input central galaxy (i)')
-        plt.subplot(4, 4, 4)
+        plt.subplot(5, 5, 5)
         plt.imshow(Y_val[num, :, :, 0] - pred[num, :, :, 0])
         plt.colorbar()
-        plt.title('input - output')
+        plt.title('Truth - output, loss: {}'.format(val_loss[num]))
         plt.show()
 
 
 def main(Args):
-    run_ident = 'lr_ ' + str(Args.learn_rate)
-    path = os.path.join(os.path.dirname(os.getcwd()), "data")
-    filename = os.path.join(path, 'training_data.npz')
+    run_ident = 'lr_' + str(Args.learn_rate)
+    path = '/global/cscratch1/sd/sowmyak/training_data'
+    filename = os.path.join(path, 'stamps.npz')
     X_train, Y_train, X_val, Y_val = load_data(filename)
-    model = utils.CNN_deblender(run_ident=run_ident,
+    model = utils.CNN_deblender(config=True, num_cnn_layers=6,
+                                run_ident=run_ident,
                                 learning_rate=Args.learn_rate)
     run_params = utils.Meas_args(epochs=Args.epochs,
-                                 batch_size=Args.batch_size)
-    train_loss, val_loss, pred = model.run_basic(X_train, Y_train,
-                                                 run_params, X_val, Y_val)
+                                 batch_size=Args.batch_size,
+                                 print_every=500)
+    output = model.run_basic(X_train, Y_train,
+                             run_params, X_val, Y_val)
+    [train_loss, val_loss, pred, ind_loss] = output
     model.save()
     model.sess.close()
     plot_loss(train_loss, val_loss, run_ident)
-    plot_preds(pred, X_val, Y_val)
+    # plot_preds(pred, X_val, Y_val, ind_loss)
 
 
 if __name__ == "__main__":
@@ -94,7 +100,7 @@ if __name__ == "__main__":
     parser.add_argument('--epochs', default=100, type=int,
                         help="Number of times net trained on entire training\
                         set [Default:100]")
-    parser.add_argument('--batch_size', default=32, type=int,
+    parser.add_argument('--batch_size', default=64, type=int,
                         help="Size of each mini batch [Default:32]")
     args = parser.parse_args()
     main(args)
