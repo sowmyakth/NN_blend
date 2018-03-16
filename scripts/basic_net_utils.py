@@ -5,6 +5,7 @@ import os
 import numpy as np
 import math
 import tensorflow as tf
+import subprocess
 
 
 class Meas_args(object):
@@ -90,7 +91,7 @@ class CNN_deblender(object):
         if config is True:
             inter = os.environ['NUM_INTER_THREADS']
             intra = os.environ['NUM_INTRA_THREADS']
-            print("Custom NERSC/Intel config op_parallelism_threads:inter({}), intra ({})".format(inter, intra))
+            print("Custom NERSC/Intel config op_parallelism_threads:inters({}), intra ({})".format(inter, intra))
             config = tf.ConfigProto(inter_op_parallelism_threads=int(inter),
                                     intra_op_parallelism_threads=int(intra))
             self.sess = tf.Session(config=config)
@@ -356,8 +357,10 @@ class CNN_deblender(object):
         saver.restore(self.sess, filename)
 
     def save(self):
-        fname = os.path.join(os.path.dirname(os.getcwd()), "outputs",
-                             "models", self.run_ident)
+        path = os.path.join(os.path.dirname(os.getcwd()), "outputs",
+                            "models", self.run_ident)
+        subprocess.call(['mkdir', path])
+        fname = os.path.join(path, "model")
         saver = tf.train.Saver(tf.global_variables())
         saver.save(self.sess, fname)
         return
