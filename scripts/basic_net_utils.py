@@ -88,8 +88,11 @@ class CNN_deblender(object):
         self.activations = []
         tf.reset_default_graph()
         if config is True:
-            config = tf.ConfigProto(inter_op_parallelism_threads=int(os.environ['NUM_INTER_THREADS']),
-                                    intra_op_parallelism_threads=int(os.environ['NUM_INTRA_THREADS']))
+            inter = os.environ['NUM_INTER_THREADS']
+            intra = os.environ['NUM_INTRA_THREADS']
+            print("Custom NERSC/Intel config op_parallelism_threads:inter({}), intra ({})".format(inter, intra))
+            config = tf.ConfigProto(inter_op_parallelism_threads=int(inter),
+                                    intra_op_parallelism_threads=int(intra))
             self.sess = tf.Session(config=config)
         else:
             self.sess = tf.Session()
