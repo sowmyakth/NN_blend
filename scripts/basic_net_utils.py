@@ -21,11 +21,12 @@ class Meas_args(object):
         self.print_every = print_every
 
 
-def make_layer(layer, index, num_filters):
+def make_layer(layer, num_filters):
     a2 = get_conv_layer(layer, [3, 3, num_filters, num_filters],
                         "conv", stride=1)
-    layer = tf.nn.crelu(a2, name='crelu')
-    return layer
+    act = tf.nn.crelu(a2, name='act')
+    tf.summary.histogram("act_summ", act)
+    return act
 
 
 def get_bi_weights(kernel_shape, name='weights'):
@@ -42,9 +43,16 @@ def get_bi_weights(kernel_shape, name='weights'):
 
 
 def get_individual_loss(y, y_out):
-    diff = np.subtract(y, y_out)
-    loss = np.sum(diff**2) / 2.
-    return loss
+    """Returns loss of each object
+    Keyword Arguments:
+        y     -- True isolated galaxy image as numpy array
+        y_out -- Output of net as numpy array
+    Returns
+        L2 loss for each galaxy
+    """
+    diff = np.subtract(y, y_out)**2
+    loss = diff.sum(axis=3).sum(axis=1).sum(axis=1)
+    return loss / 2.
 
 
 def get_conv_layer(input_layer, kernel_shape, name, stride=2):
@@ -61,10 +69,10 @@ def get_conv_layer(input_layer, kernel_shape, name, stride=2):
     b = tf.Variable(tf.truncated_normal([kernel_shape[-1]], stddev=0.1),
                     name="b" + name)
     tf.summary.histogram("b" + name + "_summ", b)
-    layer = tf.nn.conv2d(input_layer, W,
-                         strides=[1, stride, stride, 1],
-                         padding='VALID', name=name) + b
-    return layer
+    conv = tf.nn.conv2d(input_layer, W,
+                        strides=[1, stride, stride, 1],
+                        padding='VALID', name=name) + b
+    return conv
 
 
 class CNN_deblender(object):
@@ -145,7 +153,8 @@ class CNN_deblender(object):
             num_filters = 4
             a1 = get_conv_layer(self.X, [5, 5, self.bands, num_filters],
                                 name="conv", stride=1)
-            layer = tf.nn.crelu(a1, name='crelu1')
+            layer = tf.nn.crelu(a1, name='act')
+            tf.summary.histogram("act_summ", layer)
         for i in range(6):
             num_filters *= 2
             with tf.name_scope("conv_layer" + str(i)):
