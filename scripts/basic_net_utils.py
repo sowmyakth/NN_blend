@@ -68,27 +68,31 @@ def get_conv_layer(input_layer, kernel_shape, name, stride=2):
     return conv
 
 
-def BatchNorm_layer(x, scope, train, epsilon=0.001, decay=.99):
+def BatchNorm_layer(layer_in, scope, train):
     # Perform a batch normalization after a conv layer or a fc layer
     # gamma: a scale factor
     # beta: an offset
     # epsilon: the variance epsilon - a small float number to avoid dividing by 0
-    with tf.variable_scope(scope, reuse=True):
-        with tf.variable_scope('BatchNorm', reuse=True) as bnscope:
-            gamma, beta = tf.get_variable("gamma"), tf.get_variable("beta")
-            moving_avg, moving_var = tf.get_variable("moving_avg"), tf.get_variable("moving_var")
-            shape = x.get_shape().as_list()
-            control_inputs = []
-            if train:
-                avg, var = tf.nn.moments(x, range(len(shape)-1))
-                update_moving_avg = moving_averages.assign_moving_average(moving_avg, avg, decay)
-                update_moving_var = moving_averages.assign_moving_average(moving_var, var, decay)
-                control_inputs = [update_moving_avg, update_moving_var]
-            else:
-                avg = moving_avg
-                var = moving_var
-            with tf.control_dependencies(control_inputs):
-                output = tf.nn.batch_normalization(x, avg, var, offset=beta, scale=gamma, variance_epsilon=epsilon)
+    with tf.variable_scope('BatchNorm'):
+        depth = tf.shape(layer_in)[-1]
+        gamma = tf.get_variable("gamma", depth, initializer=tf.constant_initializer(1.0))
+        beta = tf.get_variable("beta", depth, initializer=tf.constant_initializer(0.0))
+        moving_avg = tf.get_variable("moving_avg", depth, initializer=tf.constant_initializer(0.0), trainable=False)
+        moving_var = tf.get_variable("moving_var", depth, initializer=tf.constant_initializer(1.0), trainable=False)
+        # if train:
+        avg, var = tf.nn.moments(layer_in, axes=[0, 1, 2])
+        moving_avg.assign(avg)
+        moving_var.assign(var)
+        # update_moving_avg = moving_averages.assign_moving_average(moving_avg, avg, decay)
+        # update_moving_var = moving_averages.assign_moving_average(moving_var, var, decay)
+        # control_inputs = [update_moving_avg, update_moving_var]
+        #else:
+        # avg = moving_avg
+        #var = moving_var
+        #with tf.control_dependencies(control_inputs):
+        output = tf.nn.batch_normalization(layer_in, moving_avg, moving_var,
+                                           offset=beta, scale=gamma, variance_epsilon=1e-4,
+                                           name='batchnorm')
     return output
 
 def initialize_batch_norm(scope, depth):
@@ -198,7 +202,7 @@ class CNN_deblender(object):
             num_filters *= 2
             with tf.name_scope("conv_layer" + str(i)):
                 layer = self.make_layer(layer, num_filters)
-        with tf.name_scope("deconv_layer"):
+        with tf.variable_scope("deconv_layer"):
             deconv_weights = get_bi_weights([2, 2, 1, num_filters * 2])
             tf.summary.histogram("deconv_weights", deconv_weights)
             out_shape = tf.stack([tf.shape(layer)[0], 32, 32, 1])
