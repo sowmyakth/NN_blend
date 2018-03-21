@@ -58,7 +58,6 @@ def get_conv_layer(input_layer, kernel_shape, name, stride=2):
     W = tf.Variable(tf.truncated_normal(kernel_shape, stddev=0.1),
                     name="W" + name,)
     tf.summary.histogram("W" + name + "_summ", W)
-    # bconv1 = tf.get_variable(name="b" + name, shape=kernel_shape[-1])
     b = tf.Variable(tf.truncated_normal([kernel_shape[-1]], stddev=0.1),
                     name="b" + name)
     tf.summary.histogram("b" + name + "_summ", b)
@@ -68,17 +67,57 @@ def get_conv_layer(input_layer, kernel_shape, name, stride=2):
     return conv
 
 
-def BatchNorm_layer(layer_in, scope, train):
+def get_deconv_ouput_shape(input_layer, kernel_shape):
+    """This is for strode=1 and padding=valid only"""
+    in_shape = input_layer.get_shape().as_list()
+    channels = kernel_shape[-2]
+    height = in_shape[1] + kernel_shape[0] - 1
+    width = in_shape[2] + kernel_shape[1] - 1
+    batch = tf.shape(input_layer)[0]
+    out_shape = tf.stack([batch, height, width, channels])
+    return out_shape
+
+
+def get_deconv_layer(input_layer, kernel_shape, name, stride=2):
+    """Returns conv2d layer.
+    Defines weight functions W, a tensor of shape kernel size
+    Defines bias b, a tensor vector of shape number of kernels
+    Creates conv layer
+    """
+    # Wconv1 = tf.get_variable(name="W" + name, shape=kernel_shape)
+
+    W = tf.Variable(tf.truncated_normal(kernel_shape, stddev=0.1),
+                    name="W" + name,)
+    tf.summary.histogram("W" + name + "_summ", W)
+    b = tf.Variable(tf.truncated_normal([kernel_shape[-2]], stddev=0.1),
+                    name="b" + name)
+    tf.summary.histogram("b" + name + "_summ", b)
+    out_shape = get_deconv_ouput_shape(input_layer, kernel_shape)
+    print (out_shape)
+    conv = tf.nn.conv2d_transpose(input_layer, W, out_shape,
+                                  strides=[1, stride, stride, 1],
+                                  padding='VALID', name=name) + b
+    print (conv.get_shape().as_list())
+    return conv
+
+
+def make_BatchNorm_layer(layer_in, train):
     # Perform a batch normalization after a conv layer or a fc layer
     # gamma: a scale factor
     # beta: an offset
     # epsilon: the variance epsilon - a small float number to avoid dividing by 0
     with tf.variable_scope('BatchNorm'):
-        depth = tf.shape(layer_in)[-1]
-        gamma = tf.get_variable("gamma", depth, initializer=tf.constant_initializer(1.0))
-        beta = tf.get_variable("beta", depth, initializer=tf.constant_initializer(0.0))
-        moving_avg = tf.get_variable("moving_avg", depth, initializer=tf.constant_initializer(0.0), trainable=False)
-        moving_var = tf.get_variable("moving_var", depth, initializer=tf.constant_initializer(1.0), trainable=False)
+        depth = layer_in.get_shape().as_list()[-1]
+        gamma = tf.get_variable("gamma", depth,
+                                initializer=tf.constant_initializer(1.0))
+        beta = tf.get_variable("beta", [depth],
+                               initializer=tf.constant_initializer(0.0))
+        moving_avg = tf.get_variable("moving_avg", [depth],
+                                     initializer=tf.constant_initializer(0.0),
+                                     trainable=False)
+        moving_var = tf.get_variable("moving_var", [depth],
+                                     initializer=tf.constant_initializer(1.0),
+                                     trainable=False)
         # if train:
         avg, var = tf.nn.moments(layer_in, axes=[0, 1, 2])
         moving_avg.assign(avg)
@@ -91,22 +130,20 @@ def BatchNorm_layer(layer_in, scope, train):
         #var = moving_var
         #with tf.control_dependencies(control_inputs):
         output = tf.nn.batch_normalization(layer_in, moving_avg, moving_var,
-                                           offset=beta, scale=gamma, variance_epsilon=1e-4,
+                                           offset=beta, scale=gamma,
+                                           variance_epsilon=1e-4,
                                            name='batchnorm')
+        tf.summary.histogram("avg_summ", moving_avg)
+        tf.summary.histogram("var_summ", moving_var)
+        tf.summary.histogram("gamma_summ", gamma)
+        tf.summary.histogram("beta_summ", beta)
     return output
 
-def initialize_batch_norm(scope, depth):
-    with tf.variable_scope(scope) as bnscope:
-         gamma = tf.get_variable("gamma", shape[-1], initializer=tf.constant_initializer(1.0))
-         beta = tf.get_variable("beta", shape[-1], initializer=tf.constant_initializer(0.0))
-         moving_avg = tf.get_variable("moving_avg", shape[-1], initializer=tf.constant_initializer(0.0), trainable=False)
-         moving_var = tf.get_variable("moving_var", shape[-1], initializer=tf.constant_initializer(1.0), trainable=False)
-         bnscope.reuse_variables()
 
 class CNN_deblender(object):
     """Class to initialize and run CNN"""
     def __init__(self, num_cnn_layers=None, run_ident=0,
-                 bands=3, learning_rate=1e-3, config=True):
+                 bands=3, learning_rate=1e-3, config=False):
         self.num_cnn_layers = num_cnn_layers
         self.run_ident = str(run_ident)
         self.bands = bands
@@ -175,7 +212,7 @@ class CNN_deblender(object):
             y_out = layer3
             return y_out
 
-    def make_layer(self, in_layer, num_filters, is_training):
+    def make_conv_unit(self, in_layer, num_filters):
         """ Makes a layer comprising of convolution, batch normalization and crelu
         activation.
         Keyword Arguments:
@@ -184,35 +221,64 @@ class CNN_deblender(object):
         Returns
             tensor output of the layer
         """
-        a2 = get_conv_layer(in_layer, [3, 3, num_filters, num_filters],
+        print(in_layer.get_shape().as_list())
+        a1 = get_conv_layer(in_layer, [3, 3, num_filters, num_filters],
                             "conv", stride=1)
+        a2 = make_BatchNorm_layer(a1, self.is_training)
         act = tf.nn.crelu(a2, name='act')
         tf.summary.histogram("act_summ", act)
         return act
 
-    def simple_model4(self):
-        print ("Initializing simple model4")
+    def make_deconv_unit(self, in_layer, num_filters):
+        """ Makes a layer comprising of convolution, batch normalization and crelu
+        activation.
+        Keyword Arguments:
+            in_layer    -- input tensor to the layer
+            num_filters -- Number of convolution filters.
+        Returns
+            tensor output of the layer
+        """
+        print(in_layer.get_shape().as_list())
+        a1 = get_deconv_layer(in_layer,
+                              [3, 3, int(num_filters / 2.), num_filters * 2],
+                              "deconv", stride=1)
+        a2 = make_BatchNorm_layer(a1, self.is_training)
+        act = tf.nn.crelu(a2, name='act')
+        tf.summary.histogram("act_summ", act)
+        return act
+
+    def multi_layer_model(self):
+        print ("Initializing multi_layer_model")
         with tf.name_scope("conv_layer_in"):
-            num_filters = 4
+            print ("Conv layer in ")
+            print(self.X.get_shape().as_list())
+            num_filters = 2
             a1 = get_conv_layer(self.X, [5, 5, self.bands, num_filters],
                                 name="conv", stride=1)
             layer = tf.nn.crelu(a1, name='act')
             tf.summary.histogram("act_summ", layer)
-        for i in range(6):
+        for i in range(5):
             num_filters *= 2
-            with tf.name_scope("conv_layer" + str(i)):
-                layer = self.make_layer(layer, num_filters)
-        with tf.variable_scope("deconv_layer"):
-            deconv_weights = get_bi_weights([2, 2, 1, num_filters * 2])
+            with tf.variable_scope("conv_layer_" + str(i)):
+                print("Conv layer {} ".format(i))
+                layer = self.make_conv_unit(layer, num_filters)
+        for i in range(5):
+            with tf.variable_scope("deconv_layer_" + str(i)):
+                print("Deconv layer {} ".format(i))
+                layer = self.make_deconv_unit(layer, num_filters)
+            num_filters /= 2
+        with tf.name_scope("deconv_layer_out"):
+            print ("Deconv layer out")
+            print(layer.get_shape().as_list())
+            deconv_weights = get_bi_weights([5, 5, 1, 4])
             tf.summary.histogram("deconv_weights", deconv_weights)
             out_shape = tf.stack([tf.shape(layer)[0], 32, 32, 1])
             layer_out = tf.nn.conv2d_transpose(layer, deconv_weights,
                                                out_shape,
-                                               strides=[1, 2, 2, 1],
+                                               strides=[1, 1, 1, 1],
                                                name="transpose",
                                                padding='VALID')
-            y_out = layer_out
-            return y_out
+            return layer_out
 
     def build_net(self):
         """makes a simple 2 layer CNN
@@ -228,7 +294,7 @@ class CNN_deblender(object):
         # Run the preferred CNN model here
         if self.num_cnn_layers is not None:
             # self.multi_layer_model()
-            self.y_out = self.simple_model4()
+            self.y_out = self.multi_layer_model()
         else:
             self.y_out = self.simple_model3()
         with tf.name_scope("loss_function"):
@@ -325,7 +391,8 @@ class CNN_deblender(object):
     def save(self):
         path = os.path.join(os.path.dirname(os.getcwd()), "outputs",
                             "models", self.run_ident)
-        subprocess.call(['mkdir', path])
+        if os.path.isdir(path) is False:
+            subprocess.call(['mkdir', path])
         fname = os.path.join(path, "model")
         saver = tf.train.Saver(tf.global_variables())
         saver.save(self.sess, fname)
