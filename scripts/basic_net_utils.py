@@ -270,14 +270,16 @@ class CNN_deblender(object):
         with tf.name_scope("deconv_layer_out"):
             print ("Deconv layer out")
             print(layer.get_shape().as_list())
-            deconv_weights = get_bi_weights([5, 5, 1, 4])
-            tf.summary.histogram("deconv_weights", deconv_weights)
-            out_shape = tf.stack([tf.shape(layer)[0], 32, 32, 1])
-            layer_out = tf.nn.conv2d_transpose(layer, deconv_weights,
-                                               out_shape,
-                                               strides=[1, 1, 1, 1],
-                                               name="transpose",
-                                               padding='VALID')
+            # deconv_weights = get_bi_weights([5, 5, 1, 4])
+            # tf.summary.histogram("deconv_weights", deconv_weights)
+            # out_shape = tf.stack([tf.shape(layer)[0], 32, 32, 1])
+            # layer_out = tf.nn.conv2d_transpose(layer, deconv_weights,
+            #                                    out_shape,
+            #                                   strides=[1, 1, 1, 1],
+            #                                   name="transpose",
+            #                                   padding='VALID')
+            layer_out = get_deconv_layer(layer, [5, 5, 1, 4],
+                                         "deconv", stride=1)
             return layer_out
 
     def build_net(self):
@@ -384,7 +386,7 @@ class CNN_deblender(object):
         ind_loss = get_individual_loss(Y_test, pred)
         return train_loss, test_loss, pred, ind_loss
 
-    def restore(self, filename):
+    def restore(self, filename=None):
         saver = tf.train.Saver(tf.global_variables())
         saver.restore(self.sess, filename)
 
