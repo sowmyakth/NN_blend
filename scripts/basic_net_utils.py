@@ -387,6 +387,10 @@ class CNN_deblender(object):
         return train_loss, test_loss, pred, ind_loss
 
     def restore(self, filename=None):
+        if filename is None:
+            path = os.path.join(os.path.dirname(os.getcwd()), "outputs",
+                                "models", self.run_ident)
+            filename = os.path.join(path, "model")
         saver = tf.train.Saver(tf.global_variables())
         saver.restore(self.sess, filename)
 
