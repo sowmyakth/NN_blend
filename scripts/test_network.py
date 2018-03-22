@@ -52,9 +52,6 @@ def load_net(name):
     model = utils.CNN_deblender(config=True, num_cnn_layers=6,
                                 run_ident=name)
     print ("Model successfully loaded")
-    # run_params = utils.Meas_args(epochs=Args.epochs,
-    #                             batch_size=Args.batch_size,
-    #                             print_every=500)
     return model
 
 
@@ -108,6 +105,7 @@ def test_model_save(model):
 
 
 def test_model():
+    """Tests model loads correctly with default settings"""
     name = 'unit_test'
     model = load_net(name)
     model.save()

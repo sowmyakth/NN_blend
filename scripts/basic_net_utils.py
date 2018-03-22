@@ -6,6 +6,7 @@ import numpy as np
 import math
 import tensorflow as tf
 import subprocess
+import galsecom.loss_fns as loss_fns
 
 
 class Meas_args(object):
@@ -143,11 +144,13 @@ def make_BatchNorm_layer(layer_in, train):
 class CNN_deblender(object):
     """Class to initialize and run CNN"""
     def __init__(self, num_cnn_layers=None, run_ident=0,
-                 bands=3, learning_rate=1e-3, config=False):
+                 bands=3, learning_rate=1e-3, config=False,
+                 loss_fn="l2"):
         self.num_cnn_layers = num_cnn_layers
         self.run_ident = str(run_ident)
         self.bands = bands
         self.learning_rate = learning_rate
+        self.loss_fn = loss_fn
         tf.reset_default_graph()
         if config is True:
             inter = os.environ['NUM_INTER_THREADS']
@@ -300,8 +303,17 @@ class CNN_deblender(object):
         else:
             self.y_out = self.simple_model3()
         with tf.name_scope("loss_function"):
-            diff = tf.subtract(self.y, self.y_out, name='diff')
-            loss = tf.nn.l2_loss(diff, name='l2_loss')
+            if self.loss_fn == 'l1':
+                loss = loss_fns.get_l1_loss(self.y,
+                                            self.y_out)
+            elif self.loss_fn == 'l2':
+                loss = loss_fns.get_l2_loss(self.y,
+                                            self.y_out)
+            elif self.loss_fn == 'chi_sq':
+                loss = loss_fns.get_chi_sq_loss(self.y,
+                                                self.y_out)
+            else:
+                raise ValueError('Unknown loss_fn')
             num = tf.cast(tf.shape(self.y)[0], tf.float32, name="number")
             self.mean_loss = tf.divide(loss, num, name="mean_loss")
             tf.summary.scalar("train_loss_summ", self.mean_loss)
@@ -313,17 +325,6 @@ class CNN_deblender(object):
         variables = [self.mean_loss, self.train_step]
         loss, _ = self.sess.run(variables, feed_dict=feed_dict)
         return loss
-
-    def get_kernel_bias_layer(self, graph,
-                              layer_name):
-        """Returns kernel values and bias of layers
-        for a given scope name"""
-        kernel = self.sess.run(graph.get_tensor_by_name(
-            layer_name + '/kernel:0'))
-        bias = self.sess.run(graph.get_tensor_by_name(
-            layer_name + '/bias:0'))
-        self.kernels.append(kernel)
-        self.biases.append(bias)
 
     def get_summary(self, feed_dict, num):
         """evealuates summary items"""
