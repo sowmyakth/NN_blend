@@ -332,15 +332,12 @@ class CNN_deblender(object):
                             feed_dict=feed_dict)
         self.writer.add_summary(s, num)
 
-    def test(self, X_test, Y_test,
-             get_interim_images=False):
+    def test(self, X_test, Y_test):
         """Evaluates net for input X"""
         variables = [self.mean_loss]
         feed_dict = {self.X: X_test,
                      self.y: Y_test}
         loss = self.sess.run(variables, feed_dict=feed_dict)
-        if get_interim_images:
-            self.get_interim_images()
         return loss
 
     def run_basic(self, X_train, Y_train,
