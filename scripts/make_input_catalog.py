@@ -4,11 +4,29 @@ catsim catalog. Each pstamp is assumed to be centered at the central galaxy,
 with a random shift in x and y direction. The secon dalaxy is loacated at a
 random distance between 0.6 - 2.4 arcseconds from the central galaxy.
 """
+from __future__ import division
 import os
 import numpy as np
 from astropy.table import Table, vstack, Column
 import copy
 out_dir = '/global/cscratch1/sd/sowmyak/'
+
+
+def get_weights_for_uniform_sample(arr, nbins=40):
+    """Returns weights to get uniform sample of array arr
+    Keyword arguments
+        arr -- array to compute weights
+        nbins -- Number of bins
+    Returns
+        weights
+    """
+    num = np.digitize(arr, np.linspace(np.min(arr), np.max(arr), nbins))
+    bin_frequency = np.bincount(num)
+    bin_prob = bin_frequency / len(arr)
+    individual_prob = bin_prob[num]
+    req_prob = 1 / individual_prob
+    weights = req_prob / sum(req_prob)
+    return weights
 
 
 def get_galaxies(Args, catdir):
@@ -28,10 +46,14 @@ def get_galaxies(Args, catdir):
     cat = Table.read(fname, format='fits')
     a = np.hypot(cat['a_d'], cat['a_b'])
     cond = (a <= 1.2) & (a > 0.2)
-    q1, = np.where(cond & (cat['i_ab'] < 25.2))
-    q2, = np.where(cond & (cat['i_ab'] < 25.2))
-    select1 = q1[np.random.randint(0, len(q1), size=Args.num)]
-    select2 = q2[np.random.randint(0, len(q2), size=Args.num)]
+    if Args.model is "lilac":
+        q, = np.where(cond & (cat['i_ab'] < 25.2))
+    else:
+        q, = np.where(cond & (cat['i_ab'] < 27))
+    # Get uniform distribution in mag
+    # weights = get_weights_for_uniform_sample(cat['i_ab'][q])
+    select1 = np.random.choice(q, size=Args.num)  # , p=weights)
+    select2 = np.random.choice(q, size=Args.num)  # , p=weights)
     return vstack([cat[select1], cat[select2]])
 
 
@@ -65,10 +87,6 @@ def get_second_centers(Args, cat):
     theta = np.random.uniform(0, 360, size=Args.num) * np.pi / 180.
     dx2 = dr * np.cos(theta)
     dy2 = dr * np.sin(theta)
-    # mult_x = np.array([[1] * int(Args.num / 2) + [-1] * int(Args.num / 2)])[0]
-    # mult_y = np.array([[1] * int(Args.num / 2) + [-1] * int(Args.num / 2)])[0]
-    # np.random.shuffle(mult_x)
-    # np.random.shuffle(mult_y)
     cat['dx'][Args.num:] += dx2  # x0 * mult_x
     cat['dy'][Args.num:] += dy2  # y0 * mult_y
     check_center(Args, cat)
@@ -76,7 +94,7 @@ def get_second_centers(Args, cat):
     cat['dec'] += cat['dy'] * 0.2 / 3600.  # dec in degrees
 
 
-def add_center_shift(Args, cat):
+def add_center_shift(Args, cat, maxshift=3):
     """Shifts center of galaxies by a random value upto 5 pixels in
     both coordinates. The shift is same for central and secondary galaxies.
 
@@ -85,16 +103,14 @@ def add_center_shift(Args, cat):
         @Args.num -- Number of galaxy blends in catalog.
         cat       -- Combined catalog of central and secondary galaxies.
     """
-    dx1 = np.random.uniform(-3, 3, size=Args.num)
-    dy1 = np.random.uniform(-3, 3, size=Args.num)
+    dx1 = np.random.uniform(-maxshift, maxshift, size=Args.num)
+    dy1 = np.random.uniform(-maxshift, maxshift, size=Args.num)
     dx = np.append(dx1, dx1)
     dy = np.append(dy1, dy1)
     col = Column(dx, "dx")
     cat.add_column(col)
     col = Column(dy, "dy")
     cat.add_column(col)
-    # cat['ra'] += dx * 0.2 / 3600.  # ra in degrees
-    # cat['dec'] += dy * 0.2 / 3600.  # dec in degrees
 
 
 def get_center_of_field(Args):
@@ -138,20 +154,66 @@ def get_central_centers(Args, cat):
     cat['ra'] = (np.append(xs, xs) + Args.stamp_size / 2. - x_cent) * c
 
 
+def add_center_shift_for_lilac(Args, catalog):
+    """Assigns center for central and second galaxy required for
+    lilac training and testing
+     Keyword arguments:
+        Args      -- Class describing catalog.
+        cat       -- Combined catalog of central and secondary galaxies.
+    """
+    add_center_shift(Args, catalog)  # adds random shift to central galaxy
+    get_second_centers(Args, catalog)  # assign center of second galaxy
+
+
+def add_center_shift_for_lavender(Args, catalog, maxshift=10):
+    """Assigns center for central and second galaxy required for
+    lilac training and testing
+     Keyword arguments:
+        Args      -- Class describing catalog.
+        cat       -- Combined catalog of central and secondary galaxies.
+    """
+    add_center_shift(Args, catalog)  # adds random shift to central galaxy
+    get_second_centers(Args, catalog)  # assign center of second galaxy
+
+
+def add_random_shift_all(cat):
+    """Shifts center of galaxies by a random value upto 5 pixels in
+    both coordinates. The shift is same for central and secondary galaxies.
+
+    Keyword arguments:
+        Args      -- Class describing catalog.
+        @Args.num -- Number of galaxy blends in catalog.
+        cat       -- Combined catalog of central and secondary galaxies.
+    """
+    dx = np.random.uniform(-10, 10, size=len(cat))
+    dy = np.random.uniform(-10, 10, size=len(cat))
+    col = Column(dx, "dx")
+    cat.add_column(col)
+    col = Column(dy, "dy")
+    cat.add_column(col)
+
+
 def main(Args):
     print ("Creating input catalog")
     catdir = '/global/homes/s/sowmyak/blending'  # path to catsim catalog
     np.random.seed(Args.seed)
     catalog = get_galaxies(Args, catdir)  # make basic catalog of 2 gal blend
     get_central_centers(Args, catalog)  # Assign center of blend in the grid
-    add_center_shift(Args, catalog)  # adds random shift to central galaxy
-    get_second_centers(Args, catalog)  # assign center of second galaxy
+    if Args.model is 'lilac':
+        add_center_shift_for_lilac(Args, catalog)
+    elif Args.model is 'orchid':
+        add_random_shift_all(catalog)
     fname = os.path.join(out_dir, 'training_data',
-                         'gal_pair_catalog.fits')  # blend catalog
-    catalog.write(fname, format='fits', overwrite=True)
+                         Args.model + '_gal_pair_catalog.fits')
+    catalog.write(fname, format='fits', overwrite=True)  # blend catalog
+    # first galaxy catalog
     fname = os.path.join(out_dir, 'training_data',
-                         'central_gal_catalog.fits')  # central galaxy catalog
+                         Args.model + '_first_gal_catalog.fits')
     catalog[:Args.num].write(fname, format='fits', overwrite=True)
+    # second galaxy catalog
+    fname = os.path.join(out_dir, 'training_data',
+                         Args.model + '_second_gal_catalog.fits')
+    catalog[Args.num:].write(fname, format='fits', overwrite=True)
 
 
 def add_args(parser):
@@ -163,3 +225,6 @@ def add_args(parser):
                         help="Number of columns in total field [Default:700]")
     parser.add_argument('--stamp_size', default=80, type=int,
                         help="Size of each stamp in pixels [Default:80]")
+    parser.add_argument('--model', default='lilac',
+                        help="Model for which catalog is made \
+                        [Default:lilac]")
