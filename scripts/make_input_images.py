@@ -9,10 +9,10 @@ central_gal_catalog.fits.
 import os
 import subprocess
 import argparse
-import make_input_catalog
 import numpy as np
 import galsim
 import sys
+import make_input_catalog
 wldeb_path = "/global/homes/s/sowmyak/blending_tutorial/Blending_tutorial/\
 WeakLensingDeblending/"
 sys.path.insert(0, wldeb_path)
@@ -37,6 +37,8 @@ def second_args(parser):
                         help='Simulated mage width in pixels.')
     parser.add_argument('--image-height', type=int,
                         help='Simulated image height in pixels.')
+    parser.add_argument('--no-analysis', action='store_true',
+                        help='Don\'t run analysis.')
 
 
 def run_wl_deb(Args, cat_string):
@@ -53,6 +55,8 @@ def run_wl_deb(Args, cat_string):
     out_cat = os.path.join(out_dir, 'training_data',
                            name + '_wldeb.fits')
     com = "python " + path + " --no-stamps"
+    if Args.no_analysis:
+        com += " --no-analysis"
     com += " --catalog-name " + in_cat
     com += " --output-name " + out_cat
     for i, key in enumerate(keys):
@@ -103,10 +107,10 @@ def main():
     nrows = int(np.ceil(num / ncols))
     args.image_height = nrows * args.stamp_size
     args.image_width = ncols * args.stamp_size
-    run_wl_deb(args, 'gal_pair')
-    run_wl_deb(args, 'central_gal')
-    add_noise(args, 'gal_pair')
-    add_noise(args, 'central_gal')
+    names = ('_gal_pair', '_first_gal', '_second_gal')
+    for name in names:
+        run_wl_deb(args, args.model + name)
+        add_noise(args, args.model + name)
 
 
 if __name__ == "__main__":
