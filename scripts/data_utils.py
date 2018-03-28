@@ -12,21 +12,22 @@ out_dir = '/global/cscratch1/sd/sowmyak/training_data'
 # gal_blend_data/training_data"
 
 
-def get_stamps(full_image, Args, out_size):
+def get_stamps(full_image, Args):
     """Gets individual stamps of size out_size.
 
     Keyword Arguments
-        full_image        -- Full field image
-        Args              -- Class describing input image.
-        @Args.num         -- Number of galaxy blends in catalog.
-        @Args.num_columns -- Number of columns in total field.
-        @args.in_size     -- Size of each stamp in pixels.
-        out_size          -- Desired siz eof postage stamps in pixels.
+        full_image              -- Full field image
+        Args                    -- Class describing input image.
+        @Args.num               -- Number of galaxy blends in catalog.
+        @Args.num_columns       -- Number of columns in total field.
+        @Args.in_size           -- Size of each stamp in pixels.
+        @Args.out_size          -- Desired size of postage stamps in pixels.
     Returns
         array of individual postage stamps
     """
     print ("getting individual stamps")
     nrows = int(np.ceil(Args.num / Args.num_columns))  # Total number of rows
+    out_size = Args.out_size
     low = int(Args.in_size / 2 - out_size / 2)
     high = int(Args.in_size / 2 + out_size / 2)
     # image_rows = full_image.reshape(nrows, Args.in_size, full_image.shape[1])
@@ -35,8 +36,11 @@ def get_stamps(full_image, Args, out_size):
     # stamps = [image_rows[j].T.reshape(Args.num_columns, Args.in_size, Args.in_size) for j in range(len(image_rows))]
     # stamps = np.array(stamps).reshape(Args.num, Args.in_size, Args.in_size)
     # stamps = image_rows.reshape(Args.num, Args.in_size, Args.in_size)
-    nStamp = (70, 700)
-    stampSize = 80
+    #nStamp = (70, 700)
+    #stampSize = 80
+    nStamp = (nrows, Args.num_columns)
+    stampSize = Args.in_size
+    print(nStamp)
     s2 = np.hstack(np.split(full_image,nStamp[0])).T.reshape(nStamp[0]*nStamp[1], stampSize, stampSize)
     # stamps = stamps[:, low:high, low:high]
     stamps = s2[:, low:high, low:high]
@@ -54,12 +58,12 @@ def load_images(filename, bands, Args):
     Returns
         array of individual postage stamps in all bands
     """
-    out_size = 32
-    image = np.zeros([Args.num, out_size, out_size, len(bands)])
+    image = np.zeros([Args.num, Args.out_size,
+                      Args.out_size, len(bands)])
     for i, band in enumerate(bands):
         print ("Getting pstamps for band", band)
         full_image = fits.open(filename.replace("band", band))[0].data
-        image[:, :, :, i] = get_stamps(full_image, Args, out_size=out_size)
+        image[:, :, :, i] = get_stamps(full_image, Args)
     return image
 
 
@@ -103,7 +107,8 @@ def get_blend_catalog(Args):
     cat = Table.read(filename, hdu=1)
     assert len(cat) % 2 == 0, "Catalog must contain only 2 galaxy blends"
     cent = np.linspace(0, Args.num, Args.num, dtype=int, endpoint=False)
-    other = np.linspace(Args.num, Args.num * 2, Args.num, dtype=int, endpoint=False)
+    other = np.linspace(Args.num, Args.num * 2, Args.num,
+                        dtype=int, endpoint=False)
     assert len(cent) == len(other), 'Each central galaxy must have a blend'
     blend_cat = cat[cent]
     add_blend_param(cat, cent, other, blend_cat)
@@ -202,13 +207,15 @@ def main(Args):
     np.random.seed(0)
     bands = ['i', 'r', 'g']
     # load blended galaxy images
+    name = args.model + '_gal_pair_band_wldeb_noise.fits'
     filename = os.path.join(out_dir,
-                            'gal_pair_band_wldeb_noise.fits')
+                            name)
     X = load_images(filename, bands, Args)
     blend_cat = get_blend_catalog(Args)
-    # load central galaxy images
+    # load first galaxy images
+    name = args.model + '_first_gal_band_wldeb_noise.fits'
     filename = os.path.join(out_dir,
-                            'central_gal_band_wldeb_noise.fits')
+                            name)
     Y = load_images(filename, ['i'], Args)
     X_train, Y_train, X_val, Y_val = get_train_val_sets(X, Y,
                                                         blend_cat,
@@ -232,5 +239,10 @@ if __name__ == "__main__":
                         help="Number of columns in total field [Default:700]")
     parser.add_argument('--in_size', default=80, type=int,
                         help="Size of input stamps in pixels [Default:80]")
+    parser.add_argument('--out_size', default=32, type=int,
+                        help="Size of stamps desired, in pixels [Default:32]")
+    parser.add_argument('--model', default='lilac',
+                        help="Model for which catalog is made \
+                        [Default:lavender]")
     args = parser.parse_args()
     main(args)
