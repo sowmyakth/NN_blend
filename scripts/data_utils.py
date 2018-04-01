@@ -103,7 +103,8 @@ def get_blend_catalog(Args):
     Returns
         blend_cat --  Catalog to save blend parametrs to.
     """
-    filename = os.path.join(out_dir, 'gal_pair_i_wldeb.fits')
+    filename = os.path.join(out_dir,
+                            Args.model + '_gal_pair_i_wldeb.fits')
     cat = Table.read(filename, hdu=1)
     assert len(cat) % 2 == 0, "Catalog must contain only 2 galaxy blends"
     cent = np.linspace(0, Args.num, Args.num, dtype=int, endpoint=False)
@@ -207,13 +208,13 @@ def main(Args):
     np.random.seed(0)
     bands = ['i', 'r', 'g']
     # load blended galaxy images
-    name = args.model + '_gal_pair_band_wldeb_noise.fits'
+    name = Args.model + '_gal_pair_band_wldeb_noise.fits'
     filename = os.path.join(out_dir,
                             name)
     X = load_images(filename, bands, Args)
     blend_cat = get_blend_catalog(Args)
     # load first galaxy images
-    name = args.model + '_first_gal_band_wldeb_noise.fits'
+    name = Args.model + '_first_gal_band_wldeb_noise.fits'
     filename = os.path.join(out_dir,
                             name)
     Y = load_images(filename, ['i'], Args)
@@ -221,12 +222,12 @@ def main(Args):
                                                         blend_cat,
                                                         subtract_mean=False)
     filename = os.path.join(out_dir,
-                            'stamps')
+                            Args.model + '_stamps')
     np.savez(filename, X_train=X_train,
              Y_train=Y_train, X_val=X_val,
              Y_val=Y_val)
     filename = os.path.join(out_dir,
-                            'blend_param.tab')
+                            Args.model + '_blend_param.tab')
     blend_cat.write(filename, format='ascii', overwrite=True)
 
 
