@@ -6,8 +6,8 @@ import numpy as np
 import math
 import tensorflow as tf
 import subprocess
-import lilac.utils as utils
-import lilac.loss_fns as loss_fns
+import models.utils as utils
+import models.loss_fns as loss_fns
 
 
 class CNN_deblender(object):
@@ -16,15 +16,18 @@ class CNN_deblender(object):
                  bands=3, learning_rate=1e-3, config=False,
                  loss_fn="l2"):
         self.num_cnn_layers = num_cnn_layers
-        self.run_ident = str(run_ident)
+        self.run_ident = "lilac_" + str(run_ident)
         self.bands = bands
         self.learning_rate = learning_rate
         self.loss_fn = loss_fn
+
+    def initiate_all(self, config):
         tf.reset_default_graph()
         if config is True:
             inter = os.environ['NUM_INTER_THREADS']
             intra = os.environ['NUM_INTRA_THREADS']
-            print("Custom NERSC/Intel config op_parallelism_threads:inters({}), intra ({})".format(inter, intra))
+            print("Custom NERSC/Intel config op_parallelism_threads:\
+                  inters({}), intra ({})".format(inter, intra))
             config = tf.ConfigProto(inter_op_parallelism_threads=int(inter),
                                     intra_op_parallelism_threads=int(intra))
             self.sess = tf.Session(config=config)
