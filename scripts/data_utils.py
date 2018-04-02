@@ -2,6 +2,7 @@
 """Script creates training and validation data for deblending two-galaxy
 pairs"""
 import os
+import pickle
 from astropy.io import fits
 from astropy.table import Table, Column
 import numpy as np
@@ -67,6 +68,23 @@ def load_images(filename, bands, Args):
     return image
 
 
+def load_isolated_images(Args):
+    # keys = ['Y' + str(i + 1) for i in range(2)]
+    # load first galaxy images
+    name = Args.model + '_first_gal_band_wldeb_noise.fits'
+    filename = os.path.join(out_dir,
+                            name)
+    Y1 = load_images(filename, ['i'], Args)
+    # load second galaxy images
+    name = Args.model + '_second_gal_band_wldeb_noise.fits'
+    filename = os.path.join(out_dir,
+                            name)
+    Y2 = load_images(filename, ['i'], Args)
+    Y = {'Y1': Y1,
+         'Y2': Y2}
+    return Y
+
+
 def add_blend_param(cat, cent, other, blend_cat):
     """Computes distance between pair, magnitude, color, flux amd size of neighbor.
     Also saves column indicating if galaxy pair will be used in validation  and
@@ -130,12 +148,14 @@ def normalize_images(X, Y):
     """
     sum_image = X.sum(axis=3).sum(axis=1).sum(axis=1)
     X_norm = (X.T / sum_image).T * 100
-    # sum_image = Y.sum(axis=3).sum(axis=1).sum(axis=1)
-    Y_norm = (Y.T / sum_image).T * 100
+    Y_norm = {}
+    for key in Y.keys():
+        Y_norm[key] = (Y[key].T / sum_image).T * 100
+        assert np.all(Y_norm[key].sum(axis=3).sum(axis=1).sum(axis=1) <= 100),\
+            "Incorrectly normalized"
     np.testing.assert_almost_equal(X_norm.sum(axis=3).sum(axis=1).sum(axis=1),
                                    100, err_msg="Incorrectly normalized")
-    assert np.all(Y_norm.sum(axis=3).sum(axis=1).sum(axis=1) <= 100),\
-        "Incorrectly normalized"
+
     return X_norm, Y_norm, sum_image
 
 
@@ -170,14 +190,15 @@ def subtract_mean(X_train, Y_train, X_val, Y_val):
     mean_image = np.mean(X_train, axis=0)
     X_train -= mean_image
     X_val -= mean_image
-    mean_image = np.mean(Y_train, axis=0)
-    Y_train -= mean_image
-    Y_val -= mean_image
+    for key in Y_train.keys():
+        mean_image = np.mean(Y_train[key], axis=0)
+        Y_train[key] -= mean_image
+        Y_val[key] -= mean_image
     return X_train, Y_train, X_val, Y_val
 
 
 def get_train_val_sets(X, Y, blend_cat,
-                       subtract_mean, split=0.1):
+                       subtract_mean=False, split=0.1):
     """Separates the dataset into training and validation set with splitting
     ratio. Also subtracts the mean of the training image if input
 
@@ -193,10 +214,14 @@ def get_train_val_sets(X, Y, blend_cat,
     num = X.shape[0]
     validation = np.random.choice(num, int(num * split), replace=False)
     train = np.delete(range(num), validation)
-    Y_val = Y_norm[validation]
     X_val = X_norm[validation]
-    Y_train = Y_norm[train]
     X_train = X_norm[train]
+    Y_val = {}
+    for key in Y.keys():
+        Y_val[key] = Y_norm[key][validation]
+    Y_train = {}
+    for key in Y.keys():
+        Y_train[key] = Y_norm[key][train]
     add_nn_id_blend_cat(blend_cat, sum_images, validation, train)
     if subtract_mean:
         X_train, Y_train, X_val, Y_val = subtract_mean(X_train, Y_train,
@@ -213,19 +238,17 @@ def main(Args):
                             name)
     X = load_images(filename, bands, Args)
     blend_cat = get_blend_catalog(Args)
-    # load first galaxy images
-    name = Args.model + '_first_gal_band_wldeb_noise.fits'
-    filename = os.path.join(out_dir,
-                            name)
-    Y = load_images(filename, ['i'], Args)
+    Y = load_isolated_images(Args)
     X_train, Y_train, X_val, Y_val = get_train_val_sets(X, Y,
-                                                        blend_cat,
-                                                        subtract_mean=False)
+                                                        blend_cat)
     filename = os.path.join(out_dir,
-                            Args.model + '_stamps')
-    np.savez(filename, X_train=X_train,
-             Y_train=Y_train, X_val=X_val,
-             Y_val=Y_val)
+                            Args.model + '_stamps.pickle')
+    data = {'X_train': X_train,
+            'Y_train': Y_train,
+            'X_val': X_val,
+            'Y_val': Y_val}
+    with open(filename, 'wb') as handle:
+        pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
     filename = os.path.join(out_dir,
                             Args.model + '_blend_param.tab')
     blend_cat.write(filename, format='ascii', overwrite=True)
