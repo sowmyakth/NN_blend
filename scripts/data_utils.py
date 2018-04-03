@@ -31,21 +31,10 @@ def get_stamps(full_image, Args):
     out_size = Args.out_size
     low = int(Args.in_size / 2 - out_size / 2)
     high = int(Args.in_size / 2 + out_size / 2)
-    # image_rows = full_image.reshape(nrows, Args.in_size, full_image.shape[1])
-    # image_rows = np.vstack(np.hsplit(full_image, Args.num_columns))
-    # print ("Number of rows", len(image_rows))
-    # stamps = [image_rows[j].T.reshape(Args.num_columns, Args.in_size, Args.in_size) for j in range(len(image_rows))]
-    # stamps = np.array(stamps).reshape(Args.num, Args.in_size, Args.in_size)
-    # stamps = image_rows.reshape(Args.num, Args.in_size, Args.in_size)
-    #nStamp = (70, 700)
-    #stampSize = 80
     nStamp = (nrows, Args.num_columns)
     stampSize = Args.in_size
-    print(nStamp)
     s2 = np.hstack(np.split(full_image,nStamp[0])).T.reshape(nStamp[0]*nStamp[1], stampSize, stampSize)
-    # stamps = stamps[:, low:high, low:high]
     stamps = s2[:, low:high, low:high]
-    print ("Number of rows", stamps.shape)
     return stamps
 
 
@@ -69,7 +58,7 @@ def load_images(filename, bands, Args):
 
 
 def load_isolated_images(Args):
-    # keys = ['Y' + str(i + 1) for i in range(2)]
+    """Returns dict of individual isolated galaxy image for each blend"""
     # load first galaxy images
     name = Args.model + '_first_gal_band_wldeb_noise.fits'
     filename = os.path.join(out_dir,
