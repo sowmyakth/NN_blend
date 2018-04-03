@@ -74,7 +74,7 @@ def check_center(Args, cat):
     cat[Args.num:][q] = cat1_copy
 
 
-def get_second_centers(Args, cat):
+def get_second_centers(Args, cat, check_center=True):
     """ Assigns a random x and y cordinate distance of the second galaxy from
     the central galaxy.
 
@@ -89,7 +89,8 @@ def get_second_centers(Args, cat):
     dy2 = dr * np.sin(theta)
     cat['dx'][Args.num:] += dx2  # x0 * mult_x
     cat['dy'][Args.num:] += dy2  # y0 * mult_y
-    check_center(Args, cat)
+    if check_center:
+        check_center(Args, cat)
     cat['ra'] += cat['dx'] * 0.2 / 3600.   # ra in degrees
     cat['dec'] += cat['dy'] * 0.2 / 3600.  # dec in degrees
 
@@ -154,7 +155,19 @@ def get_central_centers(Args, cat):
     cat['ra'] = (np.append(xs, xs) + Args.stamp_size / 2. - x_cent) * c
 
 
-def add_center_shift_for_lilac(Args, catalog):
+def switch_centers(catalog, catalog2, num):
+    """Switch centers to get second galaxy at center of stamp"""
+    catalog2['dx'][num:] = -1 * catalog['dx'][:num]
+    catalog2['dy'][num:] = -1 * catalog['dy'][:num]
+    catalog2['dx'][:num] = -1 * catalog['dx'][num:]
+    catalog2['dy'][:num] = -1 * catalog['dy'][num:]
+    catalog2['ra'][num:] = -1 * catalog['ra'][:num]
+    catalog2['dec'][num:] = -1 * catalog['dec'][:num]
+    catalog2['ra'][:num] = -1 * catalog['ra'][num:]
+    catalog2['dec'][:num] = -1 * catalog['dec'][num:]
+
+
+def make_cats_for_lilac(Args, catalog, catalog2):
     """Assigns center for central and second galaxy required for
     lilac training and testing
      Keyword arguments:
@@ -163,17 +176,44 @@ def add_center_shift_for_lilac(Args, catalog):
     """
     add_center_shift(Args, catalog)  # adds random shift to central galaxy
     get_second_centers(Args, catalog)  # assign center of second galaxy
+    catalog2 = copy.deepcopy(catalog)
+    switch_centers(catalog, catalog2, Args.num)
+    fname = os.path.join(out_dir, 'training_data',
+                         Args.model + '_gal_pair_catalog1.fits')
+    catalog.write(fname, format='fits', overwrite=True)  # blend catalog1
+    fname = os.path.join(out_dir, 'training_data',
+                         Args.model + '_gal_pair_catalog2.fits')
+    catalog2.write(fname, format='fits', overwrite=True)  # blend catalog2
+    # first galaxy catalog
+    fname = os.path.join(out_dir, 'training_data',
+                         Args.model + '_first_gal_catalog.fits')
+    catalog[:Args.num].write(fname, format='fits', overwrite=True)
+    # second galaxy catalog
+    fname = os.path.join(out_dir, 'training_data',
+                         Args.model + '_second_gal_catalog.fits')
+    catalog2[Args.num:].write(fname, format='fits', overwrite=True)
+    return
 
 
-def add_center_shift_for_lavender(Args, catalog, maxshift=10):
-    """Assigns center for central and second galaxy required for
-    lilac training and testing
-     Keyword arguments:
-        Args      -- Class describing catalog.
-        cat       -- Combined catalog of central and secondary galaxies.
-    """
-    add_center_shift(Args, catalog)  # adds random shift to central galaxy
-    get_second_centers(Args, catalog)  # assign center of second galaxy
+def make_loc_map(catalog, Args):
+    dtype = [('startileid', np.int32),
+             ('ra', np.float32),
+             ('dec', np.float32),
+             ('i_ab', np.float32),
+             ('r_ab', np.float32),
+             ('redshift', np.float32),
+             ('fluxnorm_star', np.float32)]
+    data = np.zeros(len(catalog), dtype=dtype)
+    cat2 = Table(data, copy=False)
+    cat2['i_ab'] = 25
+    cat2['r_ab'] = 26
+    cat2['startileid'] = catalog['galtileid']
+    fname = os.path.join(out_dir, 'training_data',
+                         Args.model + '_loc_map_catalog1.fits')
+    cat2[:Args.num].write(fname, format='fits', overwrite=True)
+    fname = os.path.join(out_dir, 'training_data',
+                         Args.model + '_loc_map_catalog2.fits')
+    cat2[Args.num:].write(fname, format='fits', overwrite=True)
 
 
 def add_random_shift_all(cat):
@@ -200,9 +240,10 @@ def main(Args):
     catalog = get_galaxies(Args, catdir)  # make basic catalog of 2 gal blend
     get_central_centers(Args, catalog)  # Assign center of blend in the grid
     if Args.model is 'lilac':
-        add_center_shift_for_lilac(Args, catalog)
-    elif Args.model is 'orchid':
-        add_random_shift_all(catalog)
+        make_cats_for_lilac(Args, catalog)
+    add_center_shift(Args, catalog, maxshift=10)
+    get_second_centers(Args, catalog, check_center=False)
+    make_loc_map(catalog)
     fname = os.path.join(out_dir, 'training_data',
                          Args.model + '_gal_pair_catalog.fits')
     catalog.write(fname, format='fits', overwrite=True)  # blend catalog
