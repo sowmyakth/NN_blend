@@ -57,6 +57,29 @@ def load_images(filename, bands, Args):
     return image
 
 
+def load_input_images(bands, Args):
+    name = Args.model + '_gal_pair_band_wldeb_noise.fits'
+    filename = os.path.join(out_dir,
+                            name)
+    blend_image = load_images(filename, bands, Args)
+    if Args.model is "lilac":
+        X = {'blend_image': blend_image}
+    elif Args.model is "lavender":
+        name = Args.model + '_loc_map_band_1.fits'
+        filename = os.path.join(out_dir,
+                                name)
+        loc1 = load_images(filename, ['i'], Args)
+        # load second galaxy images
+        name = Args.model + '_loc_map_band_1.fits'
+        filename = os.path.join(out_dir,
+                                name)
+        loc2 = load_images(filename, ['i'], Args)
+        X = {'blend_image': blend_image,
+             'loc1': loc1,
+             'loc2': loc2}
+    return X
+
+
 def load_isolated_images(Args):
     """Returns dict of individual isolated galaxy image for each blend"""
     # load first galaxy images
@@ -203,14 +226,16 @@ def get_train_val_sets(X, Y, blend_cat,
     num = X.shape[0]
     validation = np.random.choice(num, int(num * split), replace=False)
     train = np.delete(range(num), validation)
-    X_val = X_norm[validation]
-    X_train = X_norm[train]
-    Y_val = {}
+    X_val = {}
+    X_train = {}
     for key in Y.keys():
-        Y_val[key] = Y_norm[key][validation]
+        X_train[key] = X_norm[key][train]
+        X_val[key] = X_norm[key][validation]
+    Y_val = {}
     Y_train = {}
     for key in Y.keys():
         Y_train[key] = Y_norm[key][train]
+        Y_val[key] = Y_norm[key][validation]
     add_nn_id_blend_cat(blend_cat, sum_images, validation, train)
     if subtract_mean:
         X_train, Y_train, X_val, Y_val = subtract_mean(X_train, Y_train,
@@ -222,12 +247,9 @@ def main(Args):
     np.random.seed(0)
     bands = ['i', 'r', 'g']
     # load blended galaxy images
-    name = Args.model + '_gal_pair_band_wldeb_noise.fits'
-    filename = os.path.join(out_dir,
-                            name)
-    X = load_images(filename, bands, Args)
+    X = laod_input_images(Args)
     blend_cat = get_blend_catalog(Args)
-    Y = load_isolated_images(Args)
+    Y = load_isolated_images(bands, Args)
     X_train, Y_train, X_val, Y_val = get_train_val_sets(X, Y,
                                                         blend_cat)
     filename = os.path.join(out_dir,
