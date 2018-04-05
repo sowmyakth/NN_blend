@@ -9,7 +9,8 @@ import os
 import numpy as np
 from astropy.table import Table, vstack, Column
 import copy
-out_dir = '/global/cscratch1/sd/sowmyak/'
+import subprocess
+out_dir = '/global/cscratch1/sd/sowmyak/training_data'
 
 
 def get_weights_for_uniform_sample(arr, nbins=40):
@@ -24,7 +25,7 @@ def get_weights_for_uniform_sample(arr, nbins=40):
     bin_frequency = np.bincount(num)
     bin_prob = bin_frequency / len(arr)
     individual_prob = bin_prob[num]
-    req_prob = 1 / individual_prob
+    req_prob = 1. / individual_prob
     weights = req_prob / sum(req_prob)
     return weights
 
@@ -34,8 +35,10 @@ def get_galaxies(Args, catdir):
     selection conditions.
 
     Keyword arguments:
-        Args      -- Class describing catalog.
-        @Args.num -- Number of galaxy blends in catalog.
+        Args                 -- Class describing catalog.
+        @Args.num            -- Number of galaxy blends in catalog.
+        Args.no_undetectable -- if true, no undetectable galaxies will be\
+                                added to the dataset
         catdir    -- path to directory with catsim catalog.
 
     Returns
@@ -46,21 +49,33 @@ def get_galaxies(Args, catdir):
     cat = Table.read(fname, format='fits')
     a = np.hypot(cat['a_d'], cat['a_b'])
     cond = (a <= 1.2) & (a > 0.2)
-    if Args.model is "lilac":
-        q, = np.where(cond & (cat['i_ab'] < 25.2))
+    q, = np.where(cond & (cat['i_ab'] <= 25.2))
+    if Args.no_undetectable:
+        cat1 = cat[np.random.choice(q, size=Args.num)]  # , p=weights)
+        cat2 = cat[np.random.choice(q, size=Args.num)]  # , p=weights)
     else:
-        q, = np.where(cond & (cat['i_ab'] < 27))
+        # Make data set contain 1% undetectable galaxies
+        undet_num = int(0.01 * Args.num)
+        q2, = np.where(cond & (cat['i_ab'] < 27) & (cat['i_ab'] > 25.2))
+        cat1 = vstack([cat[np.random.choice(q, size=Args.num - undet_num)],
+                       cat[np.random.choice(q2, size=undet_num)]])
+        cat2 = vstack([cat[np.random.choice(q, size=Args.num - undet_num)],
+                       cat[np.random.choice(q2, size=undet_num)]])
     # Get uniform distribution in mag
     # weights = get_weights_for_uniform_sample(cat['i_ab'][q])
-    select1 = np.random.choice(q, size=Args.num)  # , p=weights)
-    select2 = np.random.choice(q, size=Args.num)  # , p=weights)
-    return vstack([cat[select1], cat[select2]])
+    assert (len(cat1) == Args.num), "Incorrect # of galaxies selected"
+    assert (len(cat2) == Args.num), "Incorrect # of galaxies selected"
+    return vstack([cat1, cat2])
 
 
-def check_center(Args, cat):
-    """Checks that the central galaxy is at the center.
-    If second galaxy is closer to center, swaps central
+def make_first_center(Args, cat):
+    """Checks that the first galaxy is at the center.
+    If second galaxy is closer to center, then swaps first
     and second galaxy catlog entries.
+    Keyword Arguments
+        Args      -- Class describing catalog.
+        @Args.num -- Number of galaxy blends in catalog.
+        cat       -- Combined catalog of central and secondary galaxies.
     """
     col = Column(np.zeros(Args.num * 2), "is_swapped", dtype=int)
     cat.add_column(col)
@@ -90,7 +105,7 @@ def get_second_centers(Args, cat, check_center=True):
     cat['dx'][Args.num:] += dx2  # x0 * mult_x
     cat['dy'][Args.num:] += dy2  # y0 * mult_y
     if check_center:
-        check_center(Args, cat)
+        make_first_center(Args, cat)
     cat['ra'] += cat['dx'] * 0.2 / 3600.   # ra in degrees
     cat['dec'] += cat['dy'] * 0.2 / 3600.  # dec in degrees
 
@@ -161,41 +176,51 @@ def switch_centers(catalog, catalog2, num):
     catalog2['dy'][num:] = -1 * catalog['dy'][:num]
     catalog2['dx'][:num] = -1 * catalog['dx'][num:]
     catalog2['dy'][:num] = -1 * catalog['dy'][num:]
-    catalog2['ra'][num:] = -1 * catalog['ra'][:num]
-    catalog2['dec'][num:] = -1 * catalog['dec'][:num]
-    catalog2['ra'][:num] = -1 * catalog['ra'][num:]
-    catalog2['dec'][:num] = -1 * catalog['dec'][num:]
+    # get ra dec of stamp center
+    catalog2['ra'] = catalog['ra'] - catalog['dx'] * 0.2 / 3600.
+    catalog2['dec'] = catalog['dec'] - catalog['dy'] * 0.2 / 3600.
+    # add shift in ra dec of each galaxy
+    catalog2['ra'] += catalog2['dx'] * 0.2 / 3600.
+    catalog2['dec'] += catalog2['dy'] * 0.2 / 3600.
+    # catalog2['ra'][num:] = -1 *
+    # catalog2['dec'][num:] = -1 * catalog['dec'][:num]
+    # catalog2['ra'][:num] = -1 * catalog['ra'][num:]
+    # catalog2['dec'][:num] = -1 * catalog['dec'][num:]
 
 
-def make_cats_for_lilac(Args, catalog, catalog2):
+def make_cats_for_lilac(Args, catalog):
     """Assigns center for central and second galaxy required for
     lilac training and testing
      Keyword arguments:
-        Args      -- Class describing catalog.
-        cat       -- Combined catalog of central and secondary galaxies.
+        Args        -- Class describing catalog.
+        @Args.model -- CNN model for which the data is designed for.
+        catalog     -- Combined catalog of central and secondary galaxies.
     """
     add_center_shift(Args, catalog)  # adds random shift to central galaxy
     get_second_centers(Args, catalog)  # assign center of second galaxy
     catalog2 = copy.deepcopy(catalog)
     switch_centers(catalog, catalog2, Args.num)
-    fname = os.path.join(out_dir, 'training_data',
-                         Args.model + '_gal_pair_catalog1.fits')
+    fname = os.path.join(out_dir, Args.model, 'gal_pair1_catalog.fits')
     catalog.write(fname, format='fits', overwrite=True)  # blend catalog1
-    fname = os.path.join(out_dir, 'training_data',
-                         Args.model + '_gal_pair_catalog2.fits')
+    fname = os.path.join(out_dir, Args.model, 'gal_pair2_catalog.fits')
     catalog2.write(fname, format='fits', overwrite=True)  # blend catalog2
     # first galaxy catalog
-    fname = os.path.join(out_dir, 'training_data',
-                         Args.model + '_first_gal_catalog.fits')
+    fname = os.path.join(out_dir, Args.model, 'first_gal_catalog.fits')
     catalog[:Args.num].write(fname, format='fits', overwrite=True)
     # second galaxy catalog
-    fname = os.path.join(out_dir, 'training_data',
-                         Args.model + '_second_gal_catalog.fits')
+    fname = os.path.join(out_dir, Args.model, 'second_gal_catalog.fits')
     catalog2[Args.num:].write(fname, format='fits', overwrite=True)
     return
 
 
 def make_loc_map(catalog, Args):
+    """Create a catalog with a star of mag 22 at the location of the galaxies
+    in the input blend catalog.
+    Keyword arguments:
+        catalog     -- Combined catalog of central and secondary galaxies.
+        Args        -- Class describing catalog.
+        @Args.model -- CNN model for which the data is designed for.
+     """
     dtype = [('startileid', np.int32),
              ('ra', np.float32),
              ('dec', np.float32),
@@ -205,61 +230,48 @@ def make_loc_map(catalog, Args):
              ('fluxnorm_star', np.float32)]
     data = np.zeros(len(catalog), dtype=dtype)
     cat2 = Table(data, copy=False)
-    cat2['i_ab'] = 25
-    cat2['r_ab'] = 26
     cat2['startileid'] = catalog['galtileid']
-    fname = os.path.join(out_dir, 'training_data',
-                         Args.model + '_loc_map_catalog1.fits')
+    cat2['ra'] = catalog['ra']
+    cat2['dec'] = catalog['dec']
+    cat2['i_ab'] = 22
+    cat2['r_ab'] = 23
+    cat2['redshift'] = 0.3
+    cat2['fluxnorm_star'] = 6e-9
+    fname = os.path.join(out_dir, Args.model, 'loc_map1_catalog.fits')
     cat2[:Args.num].write(fname, format='fits', overwrite=True)
-    fname = os.path.join(out_dir, 'training_data',
-                         Args.model + '_loc_map_catalog2.fits')
+    fname = os.path.join(out_dir, Args.model, 'loc_map2_catalog.fits')
     cat2[Args.num:].write(fname, format='fits', overwrite=True)
 
 
-def add_random_shift_all(cat):
-    """Shifts center of galaxies by a random value upto 5 pixels in
-    both coordinates. The shift is same for central and secondary galaxies.
-
-    Keyword arguments:
-        Args      -- Class describing catalog.
-        @Args.num -- Number of galaxy blends in catalog.
-        cat       -- Combined catalog of central and secondary galaxies.
-    """
-    dx = np.random.uniform(-10, 10, size=len(cat))
-    dy = np.random.uniform(-10, 10, size=len(cat))
-    col = Column(dx, "dx")
-    cat.add_column(col)
-    col = Column(dy, "dy")
-    cat.add_column(col)
-
-
 def main(Args):
+    if not os.path.isdir(os.path.join(out_dir, Args.model)):
+        subprocess.call(["mkdir", os.path.join(out_dir, Args.model)])
     print ("Creating input catalog")
     catdir = '/global/homes/s/sowmyak/blending'  # path to catsim catalog
     np.random.seed(Args.seed)
     catalog = get_galaxies(Args, catdir)  # make basic catalog of 2 gal blend
     get_central_centers(Args, catalog)  # Assign center of blend in the grid
-    if Args.model is 'lilac':
+    if Args.model == 'lilac':
         make_cats_for_lilac(Args, catalog)
+        return
     add_center_shift(Args, catalog, maxshift=10)
     get_second_centers(Args, catalog, check_center=False)
-    make_loc_map(catalog)
-    fname = os.path.join(out_dir, 'training_data',
-                         Args.model + '_gal_pair_catalog.fits')
+    make_loc_map(catalog, Args)
+    fname = os.path.join(out_dir, Args.model, 'gal_pair_catalog.fits')
     catalog.write(fname, format='fits', overwrite=True)  # blend catalog
     # first galaxy catalog
-    fname = os.path.join(out_dir, 'training_data',
-                         Args.model + '_first_gal_catalog.fits')
+    fname = os.path.join(out_dir, Args.model, 'first_gal_catalog.fits')
     catalog[:Args.num].write(fname, format='fits', overwrite=True)
     # second galaxy catalog
-    fname = os.path.join(out_dir, 'training_data',
-                         Args.model + '_second_gal_catalog.fits')
+    fname = os.path.join(out_dir, Args.model, 'second_gal_catalog.fits')
     catalog[Args.num:].write(fname, format='fits', overwrite=True)
 
 
 def add_args(parser):
     parser.add_argument('--num', default=49000, type=int,
                         help="# of distinct galaxy pairs [Default:49000]")
+    parser.add_argument('--no_undetectable', action='store_true',
+                        help="Undetectable galaxies not added[Default:False]")
     parser.add_argument('--seed', default=0, type=int,
                         help="Seed to randomly pick galaxies [Default:0]")
     parser.add_argument('--num_columns', default=700, type=int,
