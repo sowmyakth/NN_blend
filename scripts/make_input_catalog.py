@@ -200,7 +200,7 @@ def make_cats_for_lilac(Args, catalog):
     get_second_centers(Args, catalog)  # assign center of second galaxy
     catalog2 = copy.deepcopy(catalog)
     switch_centers(catalog, catalog2, Args.num)
-    fname = os.path.join(out_dir, Args.model, 'gal_pair1_catalog.fits')
+    fname = os.path.join(out_dir, Args.model, 'gal_pair_catalog.fits')
     catalog.write(fname, format='fits', overwrite=True)  # blend catalog1
     fname = os.path.join(out_dir, Args.model, 'gal_pair2_catalog.fits')
     catalog2.write(fname, format='fits', overwrite=True)  # blend catalog2

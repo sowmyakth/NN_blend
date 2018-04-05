@@ -111,7 +111,7 @@ def main():
     args.image_height = nrows * args.stamp_size
     args.image_width = ncols * args.stamp_size
     if args.model == "lilac":
-        names = ('/gal_pair1', '/gal_pair2', '/first_gal', '/second_gal')
+        names = ('/gal_pair', '/gal_pair2', '/first_gal', '/second_gal')
     else:
         names = ('/gal_pair', '/first_gal', '/second_gal')
     for name in names:
