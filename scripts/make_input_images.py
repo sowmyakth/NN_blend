@@ -41,7 +41,7 @@ def second_args(parser):
                         help='Don\'t run analysis.')
 
 
-def run_wl_deb(Args, cat_string):
+def run_wl_deb(Args, cat_string, is_star=False):
     """Runs wldeblender package on the input cataloag"""
     path = wldeb_path
     path += "/simulate.py"
@@ -57,7 +57,10 @@ def run_wl_deb(Args, cat_string):
     com = "python " + path + " --no-stamps"
     if Args.no_analysis:
         com += " --no-analysis"
-    com += " --catalog-name " + in_cat
+    if is_star:
+        com += " --star-catalog-name " + in_cat
+    else:
+        com += " --catalog-name " + in_cat
     com += " --output-name " + out_cat
     for i, key in enumerate(keys):
         com += " --" + str(kys2[i]) + " "
@@ -107,10 +110,16 @@ def main():
     nrows = int(np.ceil(num / ncols))
     args.image_height = nrows * args.stamp_size
     args.image_width = ncols * args.stamp_size
-    names = ('_gal_pair', '_first_gal', '_second_gal')
+    if args.model == "lilac":
+        names = ('/gal_pair1', '/gal_pair2', '/first_gal', '/second_gal')
+    else:
+        names = ('/gal_pair', '/first_gal', '/second_gal')
     for name in names:
         run_wl_deb(args, args.model + name)
         add_noise(args, args.model + name)
+    if args.model != "lilac":
+        run_wl_deb(args, args.model + '/loc_map1', is_star=True)
+        run_wl_deb(args, args.model + '/loc_map2', is_star=True)
 
 
 if __name__ == "__main__":
