@@ -6,6 +6,7 @@ import pickle
 from astropy.io import fits
 from astropy.table import Table, Column
 import numpy as np
+import copy
 
 # path to image fits files
 out_dir = '/global/cscratch1/sd/sowmyak/training_data'
@@ -33,7 +34,8 @@ def get_stamps(full_image, Args):
     high = int(Args.in_size / 2 + out_size / 2)
     nStamp = (nrows, Args.num_columns)
     stampSize = Args.in_size
-    s2 = np.hstack(np.split(full_image,nStamp[0])).T.reshape(nStamp[0]*nStamp[1], stampSize, stampSize)
+    s2 = np.hstack(np.split(full_image,nStamp[0])).T.reshape(nStamp[0]*nStamp[1],
+                   stampSize, stampSize)
     stamps = s2[:, low:high, low:high]
     return stamps
 
@@ -58,39 +60,41 @@ def load_images(filename, bands, Args):
 
 
 def load_input_images(bands, Args):
-    name = Args.model + '_gal_pair_band_wldeb_noise.fits'
-    filename = os.path.join(out_dir,
-                            name)
+    name = 'gal_pair_band_wldeb_noise.fits'
+    filename = os.path.join(out_dir, Args.model, name)
     blend_image = load_images(filename, bands, Args)
-    if Args.model is "lilac":
-        X = {'blend_image': blend_image}
-    elif Args.model is "lavender":
-        name = Args.model + '_loc_map_band_1.fits'
-        filename = os.path.join(out_dir,
-                                name)
+    X = {'blend_image': blend_image}
+    if Args.model == "lilac":
+        name = 'gal_pair2_band_wldeb_noise.fits'
+        filename = os.path.join(out_dir, Args.model, name)
+        blend_image2 = load_images(filename, bands, Args)
+        X['blend_image2'] = blend_image2
+    else:
+        name = 'loc_map1_band_wldeb.fits'
+        filename = os.path.join(out_dir, Args.model, name)
         loc1 = load_images(filename, ['i'], Args)
         # load second galaxy images
-        name = Args.model + '_loc_map_band_1.fits'
-        filename = os.path.join(out_dir,
-                                name)
+        name = 'loc_map2_band_wldeb.fits'
+        filename = os.path.join(out_dir, Args.model, name)
         loc2 = load_images(filename, ['i'], Args)
-        X = {'blend_image': blend_image,
-             'loc1': loc1,
-             'loc2': loc2}
+        X['loc1'] = loc1
+        X['loc2'] = loc2
     return X
 
 
 def load_isolated_images(Args):
-    """Returns dict of individual isolated galaxy image for each blend"""
+    """Returns dict of individual isolated galaxy image for each blend
+    Keyword Arguments
+        Args         -- Class describing input image.
+        @Args.model  -- CNN model for which the data is designed for.
+    """
     # load first galaxy images
-    name = Args.model + '_first_gal_band_wldeb_noise.fits'
-    filename = os.path.join(out_dir,
-                            name)
+    name = 'first_gal_band_wldeb_noise.fits'
+    filename = os.path.join(out_dir, Args.model, name)
     Y1 = load_images(filename, ['i'], Args)
     # load second galaxy images
-    name = Args.model + '_second_gal_band_wldeb_noise.fits'
-    filename = os.path.join(out_dir,
-                            name)
+    name = 'second_gal_band_wldeb_noise.fits'
+    filename = os.path.join(out_dir, Args.model, name)
     Y2 = load_images(filename, ['i'], Args)
     Y = {'Y1': Y1,
          'Y2': Y2}
@@ -128,13 +132,13 @@ def get_blend_catalog(Args):
     parametrs of other galaxy
 
     Keyword Arguments
-        Args              -- Class describing input image.
-        @Args.num         -- Number of galaxy blends in catalog.
+        Args       -- Class describing input image.
+        @Args.num  -- Number of galaxy blends in catalog.
     Returns
         blend_cat --  Catalog to save blend parametrs to.
     """
     filename = os.path.join(out_dir,
-                            Args.model + '_gal_pair_i_wldeb.fits')
+                            Args.model, 'gal_pair_i_wldeb.fits')
     cat = Table.read(filename, hdu=1)
     assert len(cat) % 2 == 0, "Catalog must contain only 2 galaxy blends"
     cent = np.linspace(0, Args.num, Args.num, dtype=int, endpoint=False)
@@ -146,7 +150,33 @@ def get_blend_catalog(Args):
     return blend_cat
 
 
-def normalize_images(X, Y):
+def normalize_other_inputs(X_norm, Args):
+    """Normalizes the loc map or second blend image for the input model
+    Keyword Arguments
+        X_norm --  dict containg images input to net
+        Args         -- Class describing input image.
+        @Args.model  -- CNN model for which the data is designed for.
+    Returns
+        normalized location map image()s)
+    """
+    other_keys = list(X_norm.keys())
+    other_keys.remove("blend_image")
+    for key in other_keys:
+        other_sum_image = X_norm[key].sum(axis=3).sum(axis=1).sum(axis=1)
+        X_norm[key] = (X_norm[key].T / other_sum_image).T * 100
+    if Args.model == "orchid":
+        loc_im = np.zeros_like(X_norm[other_keys[0]])
+        for i, key in enumerate(other_keys):
+            im = X_norm.pop(key)
+            maximum = np.min((im.max(axis=2).max(axis=1)))
+            im[im < maximum / 1.5] = 0
+            im[im >= maximum / 1.5] = i + 1
+            loc_im += im
+        X_norm['loc_im'] = loc_im
+    return X_norm
+
+
+def normalize_images(X, Y, Args):
     """Galaxy images are normalized such that the sum of flux of blended
     images in all bands is 100.
 
@@ -158,15 +188,23 @@ def normalize_images(X, Y):
         Y_norm -- normalized isolated galaxy postage stamps images.
         sum_image -- sum of images in 3 bands; normalization value.
     """
-    sum_image = X.sum(axis=3).sum(axis=1).sum(axis=1)
-    X_norm = (X.T / sum_image).T * 100
+    sum_image = X['blend_image'].sum(axis=3).sum(axis=1).sum(axis=1)
+    X_norm_temp = copy.deepcopy(X)
+    X_norm_temp['blend_image'] = (X['blend_image'].T / sum_image).T * 100
+    # Normailze loc images separately
+    X_norm = normalize_other_inputs(X_norm_temp, Args)
     Y_norm = {}
     for key in Y.keys():
         Y_norm[key] = (Y[key].T / sum_image).T * 100
         assert np.all(Y_norm[key].sum(axis=3).sum(axis=1).sum(axis=1) <= 100),\
             "Incorrectly normalized"
-    np.testing.assert_almost_equal(X_norm.sum(axis=3).sum(axis=1).sum(axis=1),
+    flux1 = X_norm['blend_image'].sum(axis=3).sum(axis=1).sum(axis=1)
+    np.testing.assert_almost_equal(flux1,
                                    100, err_msg="Incorrectly normalized")
+    if Args.model == "lilac":
+        flux2 = X_norm['blend_image2'].sum(axis=3).sum(axis=1).sum(axis=1)
+        np.testing.assert_almost_equal(flux1, flux2,
+                                       err_msg="Incorrectly normalized")
 
     return X_norm, Y_norm, sum_image
 
@@ -210,7 +248,7 @@ def subtract_mean(X_train, Y_train, X_val, Y_val):
 
 
 def get_train_val_sets(X, Y, blend_cat,
-                       subtract_mean=False, split=0.1):
+                       Args, subtract_mean=False, split=0.1):
     """Separates the dataset into training and validation set with splitting
     ratio. Also subtracts the mean of the training image if input
 
@@ -222,18 +260,18 @@ def get_train_val_sets(X, Y, blend_cat,
     Returns
         Training and validation input and output
     """
-    X_norm, Y_norm, sum_images = normalize_images(X, Y)
-    num = X.shape[0]
+    X_norm, Y_norm, sum_images = normalize_images(X, Y, Args)
+    num = X['blend_image'].shape[0]
     validation = np.random.choice(num, int(num * split), replace=False)
     train = np.delete(range(num), validation)
     X_val = {}
     X_train = {}
-    for key in Y.keys():
+    for key in X_norm.keys():
         X_train[key] = X_norm[key][train]
         X_val[key] = X_norm[key][validation]
     Y_val = {}
     Y_train = {}
-    for key in Y.keys():
+    for key in Y_norm.keys():
         Y_train[key] = Y_norm[key][train]
         Y_val[key] = Y_norm[key][validation]
     add_nn_id_blend_cat(blend_cat, sum_images, validation, train)
@@ -246,14 +284,16 @@ def get_train_val_sets(X, Y, blend_cat,
 def main(Args):
     np.random.seed(0)
     bands = ['i', 'r', 'g']
-    # load blended galaxy images
-    X = laod_input_images(Args)
+    # load CNN input data
+    X = load_input_images(bands, Args)
     blend_cat = get_blend_catalog(Args)
-    Y = load_isolated_images(bands, Args)
+    # load CNN output data
+    Y = load_isolated_images(Args)
+    # Divide data into training and validation sets.
     X_train, Y_train, X_val, Y_val = get_train_val_sets(X, Y,
-                                                        blend_cat)
+                                                        blend_cat, Args)
     filename = os.path.join(out_dir,
-                            Args.model + '_stamps.pickle')
+                            Args.model, 'stamps.pickle')
     data = {'X_train': X_train,
             'Y_train': Y_train,
             'X_val': X_val,
