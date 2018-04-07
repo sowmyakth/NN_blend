@@ -150,67 +150,60 @@ def get_blend_catalog(Args):
     return blend_cat
 
 
-def normalize_other_inputs(X_norm, Args):
+def normalize_other_inputs(X, Args):
     """Normalizes the loc map or second blend image for the input model
     Keyword Arguments
-        X_norm --  dict containg images input to net
+        X            --  dict containg images input to net
         Args         -- Class describing input image.
         @Args.model  -- CNN model for which the data is designed for.
     Returns
         normalized location map image()s)
     """
-    other_keys = list(X_norm.keys())
+    other_keys = list(X.keys())
     other_keys.remove("blend_image")
     for key in other_keys:
-        other_sum_image = X_norm[key].sum(axis=3).sum(axis=1).sum(axis=1)
-        X_norm[key] = (X_norm[key].T / other_sum_image).T * 100
+        X[key] = (X[key] - np.mean(X[key])) / np.std(X[key])
     if Args.model == "orchid":
-        loc_im = np.zeros_like(X_norm[other_keys[0]])
+        loc_im = np.zeros_like(X[other_keys[0]])
         for i, key in enumerate(other_keys):
-            im = X_norm.pop(key)
+            im = X.pop(key)
             maximum = np.min((im.max(axis=2).max(axis=1)))
             im[im < maximum / 1.5] = 0
             im[im >= maximum / 1.5] = i + 1
             loc_im += im
-        X_norm['loc_im'] = loc_im
-    return X_norm
+        X['loc_im'] = loc_im
+    return X
 
 
-def normalize_images(X, Y, Args):
+def normalize_images(data, blend_cat, Args):
     """Galaxy images are normalized such that the sum of flux of blended
     images in all bands is 100.
 
     Keyword Arguments
         X -- array of blended galaxy postage stamps images.
         Y -- array of isolated central galaxy postage stamp images.
+        blend_cat  -- Catalog to save blend parametrs to.
     Returns
         X_norm -- normalized blended galaxy postage stamps images.
         Y_norm -- normalized isolated galaxy postage stamps images.
         sum_image -- sum of images in 3 bands; normalization value.
     """
-    sum_image = X['blend_image'].sum(axis=3).sum(axis=1).sum(axis=1)
-    X_norm_temp = copy.deepcopy(X)
-    X_norm_temp['blend_image'] = (X['blend_image'].T / sum_image).T * 100
-    # Normailze loc images separately
-    X_norm = normalize_other_inputs(X_norm_temp, Args)
-    Y_norm = {}
-    for key in Y.keys():
-        Y_norm[key] = (Y[key].T / sum_image).T * 100
-        assert np.all(Y_norm[key].sum(axis=3).sum(axis=1).sum(axis=1) <= 100),\
-            "Incorrectly normalized"
-    flux1 = X_norm['blend_image'].sum(axis=3).sum(axis=1).sum(axis=1)
-    np.testing.assert_almost_equal(flux1,
-                                   100, err_msg="Incorrectly normalized")
-    if Args.model == "lilac":
-        flux2 = X_norm['blend_image2'].sum(axis=3).sum(axis=1).sum(axis=1)
-        np.testing.assert_almost_equal(flux1, flux2,
-                                       err_msg="Incorrectly normalized")
-
-    return X_norm, Y_norm, sum_image
+    im = data['X_train']['blend_image']
+    std = np.std(im)
+    mean = np.mean(im)
+    data['X_train']['blend_image'] = (im - mean) / std
+    data['X_val']['blend_image'] = (data['X_val']['blend_image'] - mean) / std
+    data['X_train'] = normalize_other_inputs(data['X_train'], Args)
+    data['X_val'] = normalize_other_inputs(data['X_val'], Args)
+    for key in data['Y_train'].keys():
+        data['Y_train'][key] = (data['Y_train'][key] - mean) / std
+        data['Y_val'][key] = (data['Y_val'][key] - mean) / std
+    blend_cat['std'] = std
+    blend_cat['mean'] = mean
+    return data
 
 
-def add_nn_id_blend_cat(blend_cat, sum_images,
-                        validation, train):
+def add_nn_id_blend_cat(blend_cat, validation, train):
     """Saves index of galaxy that will be used in the CNN deblender,
     separated into training and validation sets. If pair entry is to be used
     for validation then catalog parameter 'is_validation' is set to 1. The
@@ -229,26 +222,26 @@ def add_nn_id_blend_cat(blend_cat, sum_images,
     blend_cat.add_column(col)
     col = Column(np.zeros(len(blend_cat)), "norm", dtype=float)
     blend_cat.add_column(col)
+    col = Column(np.zeros(len(blend_cat)), "mean", dtype=float)
+    blend_cat.add_column(col)
     blend_cat['is_validation'][validation] = 1
     blend_cat['nn_id'][validation] = range(len(validation))
     blend_cat['nn_id'][train] = range(len(train))
-    blend_cat['norm'] = sum_images
 
 
-def subtract_mean(X_train, Y_train, X_val, Y_val):
-    """Subtracts mean image"""
-    mean_image = np.mean(X_train, axis=0)
-    X_train -= mean_image
-    X_val -= mean_image
-    for key in Y_train.keys():
-        mean_image = np.mean(Y_train[key], axis=0)
-        Y_train[key] -= mean_image
-        Y_val[key] -= mean_image
-    return X_train, Y_train, X_val, Y_val
+def concat_rotated_images(X):
+    """Increase training set by performing data augmentation"""
+    X_aug = copy.deepcopy(X)
+    for key in X_aug.keys():
+        X_aug[key] = np.concatenate([X[key][:, :, :, :],
+                                     X[key][:, :, ::-1, :],
+                                     X[key][:, ::-1, :, :],
+                                     X[key][:, ::-1, ::-1, :]])
+    return X_aug
 
 
 def get_train_val_sets(X, Y, blend_cat,
-                       Args, subtract_mean=False, split=0.1):
+                       Args, split=0.1):
     """Separates the dataset into training and validation set with splitting
     ratio. Also subtracts the mean of the training image if input
 
@@ -260,25 +253,29 @@ def get_train_val_sets(X, Y, blend_cat,
     Returns
         Training and validation input and output
     """
-    X_norm, Y_norm, sum_images = normalize_images(X, Y, Args)
     num = X['blend_image'].shape[0]
     validation = np.random.choice(num, int(num * split), replace=False)
     train = np.delete(range(num), validation)
-    X_val = {}
-    X_train = {}
-    for key in X_norm.keys():
-        X_train[key] = X_norm[key][train]
-        X_val[key] = X_norm[key][validation]
-    Y_val = {}
-    Y_train = {}
-    for key in Y_norm.keys():
-        Y_train[key] = Y_norm[key][train]
-        Y_val[key] = Y_norm[key][validation]
-    add_nn_id_blend_cat(blend_cat, sum_images, validation, train)
-    if subtract_mean:
-        X_train, Y_train, X_val, Y_val = subtract_mean(X_train, Y_train,
-                                                       X_val, Y_val)
-    return X_train, Y_train, X_val, Y_val
+    X_val, X_train = {}, {}
+    for key in X.keys():
+        X_train[key] = X[key][train]
+        X_val[key] = X[key][validation]
+    Y_val, Y_train = {}, {}
+    for key in Y.keys():
+        Y_train[key] = Y[key][train]
+        Y_val[key] = Y[key][validation]
+    data = {'X_train': X_train,
+            'Y_train': Y_train,
+            'X_val': X_val,
+            'Y_val': Y_val}
+    add_nn_id_blend_cat(blend_cat, validation, train)
+    return data
+
+
+def augment_images(data):
+    data['X_train'] = concat_rotated_images(data['X_train'])
+    data['Y_train'] = concat_rotated_images(data['Y_train'])
+    return data
 
 
 def main(Args):
@@ -290,16 +287,15 @@ def main(Args):
     # load CNN output data
     Y = load_isolated_images(Args)
     # Divide data into training and validation sets.
-    X_train, Y_train, X_val, Y_val = get_train_val_sets(X, Y,
-                                                        blend_cat, Args)
+    data = get_train_val_sets(X, Y,
+                              blend_cat, Args)
+    norm_data = normalize_images(data, blend_cat, Args)
+    aug_data = augment_images(norm_data)
     filename = os.path.join(out_dir,
                             Args.model, 'stamps.pickle')
-    data = {'X_train': X_train,
-            'Y_train': Y_train,
-            'X_val': X_val,
-            'Y_val': Y_val}
     with open(filename, 'wb') as handle:
-        pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump(aug_data, handle,
+                    protocol=pickle.HIGHEST_PROTOCOL)
     filename = os.path.join(out_dir,
                             Args.model + '_blend_param.tab')
     blend_cat.write(filename, format='ascii', overwrite=True)
