@@ -254,7 +254,7 @@ def main(Args):
     if Args.model == 'lilac':
         make_cats_for_lilac(Args, catalog)
         return
-    add_center_shift(Args, catalog, maxshift=10)
+    add_center_shift(Args, catalog, maxshift=5)
     get_second_centers(Args, catalog, check_center=False)
     make_loc_map(catalog, Args)
     fname = os.path.join(out_dir, Args.model, 'gal_pair_catalog.fits')
