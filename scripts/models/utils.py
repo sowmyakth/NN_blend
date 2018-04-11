@@ -1,5 +1,20 @@
+import pickle
 import numpy as np
 import tensorflow as tf
+
+
+def load_data(filename):
+    """loads traininf and test input and output data
+    Keyword Arguments:
+        filename -- numpy file where data is saved
+    """
+    with open(filename, 'rb') as handle:
+        data = pickle.load(handle)
+    X_train = data['X_train']
+    Y_train = data['Y_train']
+    X_val = data['X_val']
+    Y_val = data['Y_val']
+    return X_train, Y_train, X_val, Y_val
 
 
 class Meas_args(object):
@@ -53,8 +68,8 @@ def get_conv_layer(input_layer, kernel_shape, name, stride=2):
                                                         stddev=0.1),
                         name="W" + name)
     tf.summary.histogram("W" + name + "_summ", W)
-    b = tf.get_variable(intialization=tf.truncated_normal([kernel_shape[-1]],
-                                                          stddev=0.1),
+    b = tf.get_variable(initializer=tf.truncated_normal([kernel_shape[-1]],
+                                                        stddev=0.1),
                         name="b" + name)
     tf.summary.histogram("b" + name + "_summ", b)
     conv = tf.nn.conv2d(input_layer, W,
