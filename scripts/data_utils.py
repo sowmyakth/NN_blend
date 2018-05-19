@@ -4,7 +4,7 @@ pairs"""
 import os
 import pickle
 from astropy.io import fits
-from astropy.table import Table, Column
+from astropy.table import Table, Column, hstack
 import numpy as np
 import copy
 
@@ -125,6 +125,8 @@ def add_blend_param(cat, cent, other, blend_cat):
     blend_cat.add_column(col)
     col = Column(cat['sigma_m'][other], "sigma_neighbor")
     blend_cat.add_column(col)
+    col = Column(cat['purity'][other], "purity_neighbor")
+    blend_cat.add_column(col)
 
 
 def get_blend_catalog(Args):
@@ -146,6 +148,11 @@ def get_blend_catalog(Args):
                         dtype=int, endpoint=False)
     assert len(cent) == len(other), 'Each central galaxy must have a blend'
     blend_cat = cat[cent]
+    comb_blend_cat = hstack([cat[cent], cat[other]])
+    filename = os.path.join(out_dir,
+                            Args.model + '_blend_combnd.fits')
+    comb_blend_cat.write(filename, format='fits', overwrite=True)
+    print ("Combined blend cat saved at ", filename)
     add_blend_param(cat, cent, other, blend_cat)
     return blend_cat
 
@@ -280,7 +287,7 @@ def augment_images(data):
 
 def main(Args):
     np.random.seed(0)
-    bands = ['i', 'r', 'g']
+    bands = ['u', 'g', 'r', 'i', 'z', 'y']
     # load CNN input data
     X = load_input_images(bands, Args)
     blend_cat = get_blend_catalog(Args)
