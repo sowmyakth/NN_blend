@@ -56,11 +56,14 @@ def get_galaxies(Args, catdir):
     else:
         # Make data set contain 1% undetectable galaxies
         undet_num = int(0.01 * Args.num)
-        q2, = np.where(cond & (cat['i_ab'] < 27) & (cat['i_ab'] > 25.2))
+        q2, = np.where(cond & (cat['i_ab'] < 27) & (cat['i_ab'] > 25.3))
         cat1 = vstack([cat[np.random.choice(q, size=Args.num - undet_num)],
-                       cat[np.random.choice(q2, size=undet_num)]])
-        cat2 = vstack([cat[np.random.choice(q, size=Args.num - undet_num)],
-                       cat[np.random.choice(q2, size=undet_num)]])
+                       cat[np.random.choice(q, size=undet_num)]])
+        choose = np.hstack([np.random.choice(q, size=Args.num - undet_num),
+                            np.random.choice(q2, size=undet_num)])
+        np.random.shuffle(choose)
+        cat2 = cat[choose]
+        #np.random.shuffle(cat2)
     # Get uniform distribution in mag
     # weights = get_weights_for_uniform_sample(cat['i_ab'][q])
     assert (len(cat1) == Args.num), "Incorrect # of galaxies selected"
@@ -89,7 +92,28 @@ def make_first_center(Args, cat):
     cat[Args.num:][q] = cat1_copy
 
 
-def get_second_centers(Args, cat, check_center=True):
+def make_bright_center(Args, cat):
+    """Checks that the first galaxy is brighter.
+    If second galaxy is brighter, then swaps first
+    and second galaxy catlog entries.
+    Keyword Arguments
+        Args      -- Class describing catalog.
+        @Args.num -- Number of galaxy blends in catalog.
+        cat       -- Combined catalog of central and secondary galaxies.
+    """
+    col = Column(np.zeros(Args.num * 2), "is_brght_swapped", dtype=int)
+    cat.add_column(col)
+    q, = np.where(cat['i_ab'][:Args.num] >= cat['i_ab'][Args.num:])
+    cat['is_brght_swapped'][Args.num:][q] = 1
+    cat['is_brght_swapped'][:Args.num][q] = 1
+    cat1_copy = copy.deepcopy(cat[:Args.num][q])
+    cat2_copy = copy.deepcopy(cat[Args.num:][q])
+    cat[:Args.num][q] = cat2_copy
+    cat[Args.num:][q] = cat1_copy
+
+
+def get_second_centers(Args, cat,
+                       check_center=True, bright_center=False):
     """ Assigns a random x and y cordinate distance of the second galaxy from
     the central galaxy.
 
@@ -106,6 +130,9 @@ def get_second_centers(Args, cat, check_center=True):
     cat['dy'][Args.num:] += dy2  # y0 * mult_y
     if check_center:
         make_first_center(Args, cat)
+    if bright_center:
+        # checks that galaxy1 is aways brighter
+        make_bright_center(Args, cat)
     cat['ra'] += cat['dx'] * 0.2 / 3600.   # ra in degrees
     cat['dec'] += cat['dy'] * 0.2 / 3600.  # dec in degrees
 
@@ -255,7 +282,7 @@ def main(Args):
         make_cats_for_lilac(Args, catalog)
         return
     add_center_shift(Args, catalog, maxshift=5)
-    get_second_centers(Args, catalog, check_center=False)
+    get_second_centers(Args, catalog, check_center=False, bright_center=True)
     make_loc_map(catalog, Args)
     fname = os.path.join(out_dir, Args.model, 'gal_pair_catalog.fits')
     catalog.write(fname, format='fits', overwrite=True)  # blend catalog
